@@ -1,0 +1,17 @@
+networks:
+  celine_dev:
+
+services:
+  celine_proxy:
+    image: caddy:2.8
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./config/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+    networks:
+      - celine_dev
+    extra_hosts:
+      - "host-gw:172.17.0.1"
+      - "keycloak.celine.localhost:172.17.0.1"
+      - "sso.celine.localhost:172.17.0.1"
