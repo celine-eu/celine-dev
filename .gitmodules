@@ -16,3 +16,6 @@
 [submodule "repositories/rec-registry"]
 	path = repositories/rec-registry
 	url = git@github.com:celine-eu/rec-registry.git
+[submodule "repositories/celine-pipelines"]
+	path = repositories/celine-pipelines
+	url = git@github.com:celine-eu/celine-pipelines.git
