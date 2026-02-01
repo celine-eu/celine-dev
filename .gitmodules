@@ -13,3 +13,6 @@
 [submodule "repositories/dataset-api"]
 	path = repositories/dataset-api
 	url = git@github.com:celine-eu/dataset-api.git
+[submodule "repositories/rec-registry"]
+	path = repositories/rec-registry
+	url = git@github.com:celine-eu/rec-registry.git

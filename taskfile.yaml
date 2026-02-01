@@ -1,0 +1,83 @@
+version: "3"
+
+tasks:
+  repo:sync:
+    desc: "Git pull in every repositories/* directory"
+    cmds:
+      - |
+        set -eu
+        for d in repositories/*; do
+            [ -d "$d" ] || continue
+            echo "==> syncing $d"
+            (cd "$d" && git pull)
+        done
+
+  repo:start:
+    desc: "Start repositories matching pattern (e.g. task repo:start -- twin)"
+    cmds:
+      - |
+        set -eu
+        pattern="${1:-}"
+
+        matched=0
+
+        # Special-case: dev proxy lives at repo root
+        case "proxy" in
+          *"$pattern"*)
+            echo "==> starting proxy (repo root)"
+            docker compose up -d
+            matched=1
+            ;;
+        esac
+
+        for d in repositories/*; do
+          [ -d "$d" ] || continue
+          name="$(basename "$d")"
+          case "$name" in
+            *"$pattern"*)
+              echo "==> starting $name"
+              (cd "$d" && docker compose up -d)
+              matched=1
+              ;;
+          esac
+        done
+
+        if [ "$matched" -eq 0 ]; then
+          echo "No repositories matched pattern: '$pattern'" >&2
+          exit 1
+        fi
+
+  repo:stop:
+    desc: "Stop repositories matching pattern (e.g. task repo:stop -- twin)"
+    cmds:
+      - |
+        set -eu
+        pattern="${1:-}"
+
+        matched=0
+
+        # Special-case: dev proxy lives at repo root
+        case "proxy" in
+          *"$pattern"*)
+            echo "==> stopping proxy (repo root)"
+            docker compose down
+            matched=1
+            ;;
+        esac
+
+        for d in repositories/*; do
+          [ -d "$d" ] || continue
+          name="$(basename "$d")"
+          case "$name" in
+            *"$pattern"*)
+              echo "==> stopping $name"
+              (cd "$d" && docker compose down)
+              matched=1
+              ;;
+          esac
+        done
+
+        if [ "$matched" -eq 0 ]; then
+          echo "No repositories matched pattern: '$pattern'" >&2
+          exit 1
+        fi
