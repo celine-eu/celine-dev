@@ -46,6 +46,19 @@ http://mqtt.celine.localhost {
   reverse_proxy host-gw:1884
 }
 
+# Pipelines
+http://marquez.celine.localhost {
+  import auth
+  reverse_proxy host-gw:5002
+}
+
+http://prefect.celine.localhost {
+  import auth
+  reverse_proxy host-gw:4200
+}
+
+
+# APIs
 http://datasets.celine.localhost {
   import auth
   reverse_proxy host-gw:8000
@@ -67,7 +80,8 @@ http://policies.celine.localhost {
 }
 
 http://api.celine.localhost {
-
+  import auth
+  
   handle_path /datasets* {
     reverse_proxy host-gw:8000
   }
