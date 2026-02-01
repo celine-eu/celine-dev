@@ -1,0 +1,15 @@
+[submodule "repositories/celine-policies"]
+	path = repositories/celine-policies
+	url = git@github.com:celine-eu/celine-policies.git
+[submodule "repositories/celine-utils"]
+	path = repositories/celine-utils
+	url = git@github.com:celine-eu/celine-utils.git
+[submodule "repositories/digital-twin"]
+	path = repositories/digital-twin
+	url = git@github.com:celine-eu/digital-twin.git
+[submodule "repositories/celine-dashboards"]
+	path = repositories/celine-dashboards
+	url = git@github.com:celine-eu/celine-dashboards.git
+[submodule "repositories/dataset-api"]
+	path = repositories/dataset-api
+	url = git@github.com:celine-eu/dataset-api.git
