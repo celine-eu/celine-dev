@@ -19,3 +19,6 @@
 [submodule "repositories/celine-pipelines"]
 	path = repositories/celine-pipelines
 	url = git@github.com:celine-eu/celine-pipelines.git
+[submodule "repositories/celine-sdk"]
+	path = repositories/celine-sdk
+	url = git@github.com:celine-eu/celine-sdk.git
