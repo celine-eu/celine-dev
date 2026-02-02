@@ -59,31 +59,10 @@ http://prefect.celine.localhost {
 
 
 # APIs
-http://datasets.celine.localhost {
-  import auth
-  reverse_proxy host-gw:8000
-}
-
-http://dt.celine.localhost {
-  import auth
-  reverse_proxy host-gw:8002
-}
-
-http://rec-registry.celine.localhost {
-  import auth
-  reverse_proxy host-gw:8004
-}
-
-http://policies.celine.localhost {
-  import auth
-  reverse_proxy host-gw:8009
-}
-
 http://api.celine.localhost {
-  import auth
-  
+ 
   handle_path /datasets* {
-    reverse_proxy host-gw:8000
+    reverse_proxy host-gw:8001
   }
 
   handle_path /dt* {

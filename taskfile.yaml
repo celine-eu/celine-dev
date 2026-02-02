@@ -15,9 +15,10 @@ tasks:
   repo:start:
     desc: "Start repositories matching pattern (e.g. task repo:start -- twin)"
     cmds:
+      - docker compose up -d
       - |
         set -eu
-        pattern="${1:-}"
+        pattern="{{.CLI_ARGS}}"
 
         matched=0
 
@@ -50,9 +51,10 @@ tasks:
   repo:stop:
     desc: "Stop repositories matching pattern (e.g. task repo:stop -- twin)"
     cmds:
+      - docker compose down
       - |
         set -eu
-        pattern="${1:-}"
+        pattern="{{.CLI_ARGS}}"
 
         matched=0
 
