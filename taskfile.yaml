@@ -133,3 +133,36 @@ tasks:
           cp "$src" "$dst"
           echo "Restored $dst"
         done
+
+  vscode:workspace:
+    desc: Generate deterministic VS Code multi-root workspace from repositories/*
+    cmds:
+      - |
+        set -euo pipefail
+
+        WORKSPACE_FILE="celine.code-workspace"
+
+        repos=$(find repositories -mindepth 1 -maxdepth 1 -type d | sort)
+
+        {
+          echo "{"
+          echo '  "folders": ['
+          echo '    { "path": ".", "name": "celine-dev" }'
+          first=1
+          for repo in $repos; do
+            if [ -d "$repo/.git" ] || [ -f "$repo/.git" ]; then
+              if [ $first -eq 0 ]; then
+                echo ","
+              fi
+              first=0
+              printf '    { "path": "%s" }' "$repo"
+            fi
+          done
+
+          echo ""
+          echo "  ],"
+          echo '  "settings": {}'
+          echo "}"
+        } > "$WORKSPACE_FILE"
+
+        echo "Generated $WORKSPACE_FILE"
