@@ -83,3 +83,53 @@ tasks:
           echo "No repositories matched pattern: '$pattern'" >&2
           exit 1
         fi
+
+  repo:env:pack:
+    desc: "Scan repositories/**/.env and pack them into a zip preserving structure"
+    cmds:
+      - |
+        set -e
+        rm -f tmp/env-pack.zip
+        mkdir -p tmp
+        cd repositories
+        files=$(find . -type f -name ".env")
+        if [ -z "$files" ]; then
+          echo "No .env files found"
+          exit 0
+        fi
+        zip -q ../tmp/env-pack.zip $files
+        echo "Created tmp/env-pack.zip"
+
+  repo:env:extract:
+    desc: "Extract env-pack.zip and restore .env files safely"
+    cmds:
+      - |
+        set -e
+        if [ ! -f tmp/env-pack.zip ]; then
+          echo "Archive tmp/env-pack.zip not found"
+          exit 1
+        fi
+
+        rm -rf tmp/env-pack
+        mkdir -p tmp/env-pack
+        unzip -q tmp/env-pack.zip -d tmp/env-pack
+
+        cd tmp/env-pack
+        find . -type f -name ".env" | while read src; do
+          dst="../../repositories/${src#./}"
+          dst_dir=$(dirname "$dst")
+
+          mkdir -p "$dst_dir"
+
+          if [ -f "$dst" ]; then
+            if cmp -s "$src" "$dst"; then
+              continue
+            else
+              echo "WARN: existing .env differs, skipping: $dst"
+              continue
+            fi
+          fi
+
+          cp "$src" "$dst"
+          echo "Restored $dst"
+        done
