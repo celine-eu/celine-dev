@@ -22,3 +22,6 @@
 [submodule "repositories/celine-sdk"]
 	path = repositories/celine-sdk
 	url = git@github.com:celine-eu/celine-sdk.git
+[submodule "repositories/celine-ai-assistant"]
+	path = repositories/celine-ai-assistant
+	url = git@github.com:celine-eu/celine-ai-assistant.git
