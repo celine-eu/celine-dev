@@ -146,7 +146,7 @@ tasks:
         {
           echo "{"
           echo '  "folders": ['
-          echo '    { "path": ".", "name": "celine-dev" }'
+          echo '    { "path": ".", "name": "celine-dev" },'
           first=1
           for repo in $repos; do
             if [ -d "$repo/.git" ] || [ -f "$repo/.git" ]; then
@@ -190,6 +190,13 @@ tasks:
     dir: repositories/dataset-api
     cmds:
       - docker compose up -d
+
+  start:db:
+    desc: Start dataset-api services
+    deps: [start:pipelines]
+    dir: repositories/celine-pipelines
+    cmds:
+      - docker compose up -d datasets-db
 
   start:digital-twin:
     desc: Start dataset-api services
