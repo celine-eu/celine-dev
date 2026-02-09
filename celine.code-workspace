@@ -7,6 +7,7 @@
     { "path": "repositories/celine-policies" },
     { "path": "repositories/celine-sdk" },
     { "path": "repositories/celine-utils" },
+    { "path": "repositories/celine-webapp" },
     { "path": "repositories/dataset-api" },
     { "path": "repositories/digital-twin" },
     { "path": "repositories/rec-registry" }

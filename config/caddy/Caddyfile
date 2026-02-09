@@ -68,6 +68,13 @@ http://assistant.celine.localhost {
   reverse_proxy host-gw:5173
 }
 
+http://webapp.celine.localhost {
+  import auth
+
+  reverse_proxy /api host-gw:8014
+  reverse_proxy host-gw:5175
+}
+
 
 # APIs
 http://api.celine.localhost {
@@ -84,7 +91,7 @@ http://api.celine.localhost {
     reverse_proxy host-gw:8004
   }
 
-  handle_path /policies* {
+  handle_path /mqtt* {
     reverse_proxy host-gw:8009
   }
 }

@@ -15,7 +15,6 @@ tasks:
   repo:start:
     desc: "Start repositories matching pattern (e.g. task repo:start -- twin)"
     cmds:
-      - docker compose up -d
       - |
         set -eu
         pattern="{{.CLI_ARGS}}"
@@ -166,3 +165,53 @@ tasks:
         } > "$WORKSPACE_FILE"
 
         echo "Generated $WORKSPACE_FILE"
+
+  start:proxy:
+    desc: Start service proxy
+    deps: [start:policies]
+    cmds:
+      - docker compose up -d
+
+  start:pipelines:
+    desc: Start pipelines services
+    dir: repositories/celine-pipelines
+    cmds:
+      - docker compose up -d datasets-db marquez-web marquez-api prefect-server prefect-worker
+
+  start:policies:
+    desc: Start pipelines services
+    dir: repositories/celine-policies
+    cmds:
+      - docker compose up -d
+
+  start:dataset-api:
+    desc: Start dataset-api services
+    deps: [start:pipelines]
+    dir: repositories/dataset-api
+    cmds:
+      - docker compose up -d
+
+  start:digital-twin:
+    desc: Start dataset-api services
+    deps: [start:dataset-api]
+    dir: repositories/digital-twin
+    cmds:
+      - docker compose up -d
+
+  start:rec-registry:
+    desc: Start rec-registry
+    dir: repositories/rec-registry
+    cmds:
+      - docker compose up -d
+
+  start:superset:
+    desc: Start superset services
+    dir: repositories/celine-dashboards
+    cmds:
+      - docker compose up -d
+
+  start:base:
+    desc: Start dev services
+    cmds:
+      - task: start:proxy
+      - task: start:pipelines
