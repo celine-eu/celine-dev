@@ -1,6 +1,6 @@
 {
   "folders": [
-    { "path": ".", "name": "celine-dev" }
+    { "path": ".", "name": "celine-dev" },
     { "path": "repositories/celine-ai-assistant" },
     { "path": "repositories/celine-dashboards" },
     { "path": "repositories/celine-pipelines" },
