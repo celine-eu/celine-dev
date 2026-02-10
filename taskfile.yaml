@@ -1,7 +1,7 @@
 version: "3"
 
 tasks:
-  repo:sync:
+  repo:pull:
     desc: "Git pull in every repositories/* directory"
     cmds:
       - |
@@ -9,7 +9,7 @@ tasks:
         for d in repositories/*; do
             [ -d "$d" ] || continue
             echo "==> syncing $d"
-            (cd "$d" && git pull)
+            (cd "$d" && git checkout main && git pull)
         done
 
   repo:start:
@@ -172,11 +172,18 @@ tasks:
     cmds:
       - docker compose up -d
 
-  start:pipelines:
+  start:pipelines:services:
+    deps: [start:pipelines:db]
     desc: Start pipelines services
     dir: repositories/celine-pipelines
     cmds:
-      - docker compose up -d datasets-db marquez-web marquez-api prefect-server prefect-worker
+      - docker compose up -d marquez-web marquez-api prefect-server prefect-worker
+
+  start:pipelines:db:
+    desc: Start pipelines services
+    dir: repositories/celine-pipelines
+    cmds:
+      - docker compose up -d datasets-db
 
   start:policies:
     desc: Start pipelines services
@@ -193,7 +200,6 @@ tasks:
 
   start:db:
     desc: Start dataset-api services
-    deps: [start:pipelines]
     dir: repositories/celine-pipelines
     cmds:
       - docker compose up -d datasets-db
@@ -222,3 +228,10 @@ tasks:
     cmds:
       - task: start:proxy
       - task: start:pipelines
+
+  start:dev:api:
+    desc: start services for api development
+    cmds:
+      - task: start:proxy
+      - task: start:pipelines:db
+      - task: start:policies
