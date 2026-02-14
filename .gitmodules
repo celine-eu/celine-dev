@@ -28,3 +28,6 @@
 [submodule "repositories/celine-webapp"]
 	path = repositories/celine-webapp
 	url = git@github.com:celine-eu/celine-webapp.git
+[submodule "repositories/celine-frontend"]
+	path = repositories/celine-frontend
+	url = git@github.com:celine-eu/celine-frontend.git

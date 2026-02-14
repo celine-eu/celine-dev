@@ -70,8 +70,10 @@ http://assistant.celine.localhost {
 
 http://webapp.celine.localhost {
   import auth
-
-  reverse_proxy /api host-gw:8014
+  handle_path /api/assistant/* {
+    reverse_proxy host-gw:8012
+  }
+  reverse_proxy /api* host-gw:8014
   reverse_proxy host-gw:5175
 }
 
