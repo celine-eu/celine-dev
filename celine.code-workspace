@@ -1,17 +1,46 @@
 {
   "folders": [
-    { "path": ".", "name": "celine-dev" },
-    { "path": "repositories/celine-ai-assistant" },
-    { "path": "repositories/celine-dashboards" },
-    { "path": "repositories/celine-frontend" },
-    { "path": "repositories/celine-pipelines" },
-    { "path": "repositories/celine-policies" },
-    { "path": "repositories/celine-sdk" },
-    { "path": "repositories/celine-utils" },
-    { "path": "repositories/celine-webapp" },
-    { "path": "repositories/dataset-api" },
-    { "path": "repositories/digital-twin" },
-    { "path": "repositories/rec-registry" }
+    {
+      "path": ".",
+      "name": "celine-dev"
+    },
+    {
+      "path": "repositories/celine-ai-assistant"
+    },
+    {
+      "path": "repositories/celine-dashboards"
+    },
+    {
+      "path": "repositories/celine-frontend"
+    },
+    {
+      "path": "repositories/celine-pipelines"
+    },
+    {
+      "path": "repositories/celine-policies"
+    },
+    {
+      "path": "repositories/celine-sdk"
+    },
+    {
+      "path": "repositories/celine-utils"
+    },
+    {
+      "path": "repositories/celine-webapp"
+    },
+    {
+      "path": "repositories/dataset-api"
+    },
+    {
+      "path": "repositories/digital-twin"
+    },
+    {
+      "path": "repositories/rec-registry"
+    }
   ],
-  "settings": {}
+  "settings": {
+    "python.analysis.extraPaths": [
+      "src"
+    ]
+  }
 }

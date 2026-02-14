@@ -96,4 +96,12 @@ http://api.celine.localhost {
   handle_path /mqtt* {
     reverse_proxy host-gw:8009
   }
+
+  handle_path /webapp* {
+    reverse_proxy host-gw:8014
+  }
+
+  handle_path /assistant* {
+    reverse_proxy host-gw:8012
+  }
 }
