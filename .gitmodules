@@ -31,3 +31,6 @@
 [submodule "repositories/celine-frontend"]
 	path = repositories/celine-frontend
 	url = git@github.com:celine-eu/celine-frontend.git
+[submodule "repositories/nudging-tool"]
+	path = repositories/nudging-tool
+	url = git@github.com:celine-eu/nudging-tool.git
