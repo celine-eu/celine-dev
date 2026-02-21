@@ -36,7 +36,7 @@ tasks:
           case "$name" in
             *"$pattern"*)
               echo "==> starting $name"
-              (cd "$d" && docker compose up -d)
+              (cd "$d" && docker compose up -d --build)
               matched=1
               ;;
           esac
