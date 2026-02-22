@@ -59,6 +59,12 @@ http://prefect.celine.localhost {
 
 # UIs
 http://assistant.celine.localhost {
+  
+  # handle sign_out
+  handle /oauth2/* {
+    reverse_proxy host-gw:4180
+  }
+
   import auth
 
   handle_path /api/* {
@@ -69,7 +75,14 @@ http://assistant.celine.localhost {
 }
 
 http://webapp.celine.localhost {
+  
+  # handle sign_out
+  handle /oauth2/* {
+    reverse_proxy host-gw:4180
+  }
+
   import auth
+  
   handle_path /api/assistant/* {
     reverse_proxy host-gw:8012
   }

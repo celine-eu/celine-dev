@@ -11,6 +11,9 @@
       "path": "repositories/celine-dashboards"
     },
     {
+      "path": "repositories/celine-frontend"
+    },
+    {
       "path": "repositories/celine-pipelines"
     },
     {
