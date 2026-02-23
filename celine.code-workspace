@@ -1,43 +1,55 @@
 {
   "folders": [
     {
-      "path": ".",
-      "name": "celine-dev"
+      "name": "celine-dev",
+      "path": "."
     },
     {
+      "name": "celine-ai-assistant",
       "path": "repositories/celine-ai-assistant"
     },
     {
-      "path": "repositories/celine-dashboards"
-    },
-    {
+      "name": "celine-frontend",
       "path": "repositories/celine-frontend"
     },
     {
+      "name": "celine-pipelines",
       "path": "repositories/celine-pipelines"
     },
     {
+      "name": "celine-policies",
       "path": "repositories/celine-policies"
     },
     {
+      "name": "celine-dashboards",
+      "path": "repositories/celine-dashboards"
+    },
+    {
+      "name": "celine-sdk",
       "path": "repositories/celine-sdk"
     },
     {
+      "name": "celine-utils",
       "path": "repositories/celine-utils"
     },
     {
+      "name": "celine-webapp",
       "path": "repositories/celine-webapp"
     },
     {
+      "name": "dataset-api",
       "path": "repositories/dataset-api"
     },
     {
+      "name": "digital-twin",
       "path": "repositories/digital-twin"
     },
     {
+      "name": "nudging-tool",
       "path": "repositories/nudging-tool"
     },
     {
+      "name": "rec-registry",
       "path": "repositories/rec-registry"
     }
   ],
