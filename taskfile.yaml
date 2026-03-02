@@ -12,6 +12,17 @@ tasks:
             (cd "$d" && git checkout main && git pull)
         done
 
+  repo:release:
+    desc: "Launch task:release in each repo"
+    cmds:
+      - |
+        set -eu
+        for d in repositories/*; do
+            [ -d "$d" ] || continue
+            echo "==> Release for $d"
+            (cd "$d" && task release || true)
+        done
+
   repo:start:
     desc: "Start repositories matching pattern (e.g. task repo:start -- twin)"
     cmds:
