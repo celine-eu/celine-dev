@@ -13,6 +13,7 @@ tasks:
         done
 
   repo:start:
+    deps: [start:dataset-api]
     desc: "Start repositories matching pattern (e.g. task repo:start -- twin)"
     cmds:
       - |
