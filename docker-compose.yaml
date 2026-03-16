@@ -12,6 +12,6 @@ services:
     networks:
       - celine_dev
     extra_hosts:
-      - "host-gw:172.17.0.1"
-      - "keycloak.celine.localhost:172.17.0.1"
-      - "sso.celine.localhost:172.17.0.1"
+      - "host-gw:host-gateway"
+      - "keycloak.celine.localhost:host-gateway"
+      - "sso.celine.localhost:host-gateway"
