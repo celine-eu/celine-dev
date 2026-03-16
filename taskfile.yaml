@@ -146,6 +146,30 @@ tasks:
           echo "Restored $dst"
         done
 
+  repo:push:
+    desc: "Commit and push all repositories with a given message"
+    cmds:
+      - |
+        MSG="{{.CLI_ARGS}}"
+        if [ -z "$MSG" ]; then
+          echo "ERROR: commit message is required"
+          echo "Usage: task repo:push -- 'your commit message'"
+          exit 1
+        fi
+        for d in repositories/*; do
+          [ -d "$d" ] || continue
+          name="$(basename "$d")"
+          echo "==> pushing $name"
+          (
+            set -eu
+            cd "$d"
+            git add .
+            git commit -m "$MSG"
+            git push
+          ) || echo "WARN: failed to push $name, skipping"
+        done
+        git add repositories && git commit -m "chore: $MSG" && git push
+
   repo:upgrade-sdk:
     desc: "Upgrade celine-sdk in every repository that depends on it"
     cmds:
