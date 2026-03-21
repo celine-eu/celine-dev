@@ -174,7 +174,7 @@ tasks:
     desc: "Upgrade celine-sdk in every repository that depends on it"
     vars:
       SDK_VERSION:
-        sh: grep '^version' repositories/celine-sdk/pyproject.toml | grep -oP '[\d.]+'
+        sh: grep -oP '^version\s*=\s*"\K[^"]+' repositories/celine-sdk/pyproject.toml
     cmds:
       - |
         echo "==> celine-sdk version: {{.SDK_VERSION}}"
