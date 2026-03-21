@@ -172,8 +172,12 @@ tasks:
 
   repo:upgrade-sdk:
     desc: "Upgrade celine-sdk in every repository that depends on it"
+    vars:
+      SDK_VERSION:
+        sh: grep '^version' repositories/celine-sdk/pyproject.toml | grep -oP '[\d.]+'
     cmds:
       - |
+        echo "==> celine-sdk version: {{.SDK_VERSION}}"
         for d in repositories/*; do
           [ -d "$d" ] || continue
           pyproject="$d/pyproject.toml"
@@ -184,13 +188,14 @@ tasks:
           (
             set -eu
             cd "$d"
+            sed -i "s/celine-sdk>=[0-9.]*/celine-sdk>={{.SDK_VERSION}}/" pyproject.toml
             uv lock --upgrade-package celine-sdk
             git add pyproject.toml uv.lock
-            git commit -m "chore: upgrade celine-sdk"
+            git commit -m "chore: upgrade celine-sdk to {{.SDK_VERSION}}"
             git push
           ) || echo "WARN: failed to upgrade $name, skipping"
         done
-        git add repositories && git commit -m "chore: upgraded celine-sdk" && git push
+        git add repositories && git commit -m "chore: upgraded celine-sdk to {{.SDK_VERSION}}" && git push
 
   vscode:workspace:
     desc: Generate deterministic VS Code multi-root workspace from repositories/*
