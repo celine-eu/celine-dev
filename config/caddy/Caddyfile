@@ -4,7 +4,19 @@
 }
 
 (auth) {
-    forward_auth host-gw:4180 {
+    # Intercept sign_out before oauth2-proxy sees it: send the browser to
+    # Keycloak's end_session endpoint first (clears the Keycloak browser
+    # session), then Keycloak redirects to sso/oauth2/sign_out which clears
+    # the proxy cookie.  Without this, oauth2-proxy only clears the local
+    # cookie and Keycloak's SSO session survives → silent re-auth on next visit.
+    handle /oauth2/sign_out {
+        redir * http://keycloak.celine.localhost/realms/celine/protocol/openid-connect/logout?client_id=oauth2_proxy&post_logout_redirect_uri=http%3A%2F%2Fsso.celine.localhost%2Foauth2%2Fsign_out 302
+    }
+
+    # Exclude /oauth2/* so other oauth2 paths (sign_in, callback) bypass this
+    # check and route directly to oauth2-proxy without an auth pre-flight.
+    @needs_auth not path /oauth2/*
+    forward_auth @needs_auth host-gw:4180 {
         uri /oauth2/auth
 
         header_up X-Real-IP {remote_host}
@@ -39,7 +51,14 @@ http://keycloak.celine.localhost {
 }
 
 http://sso.celine.localhost {
-  reverse_proxy host-gw:4180
+  handle /oauth2/* {
+    reverse_proxy host-gw:4180
+  }
+  # bare redir must be inside handle to stay exclusive with the block above;
+  # otherwise Caddy runs it for /oauth2/* too, forwarding callback codes to webapp.
+  handle {
+    redir * http://webapp.celine.localhost{uri} 302
+  }
 }
 
 http://mqtt.celine.localhost {
