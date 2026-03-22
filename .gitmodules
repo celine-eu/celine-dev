@@ -34,3 +34,6 @@
 [submodule "repositories/nudging-tool"]
 	path = repositories/nudging-tool
 	url = git@github.com:celine-eu/nudging-tool.git
+[submodule "repositories/ontologies"]
+	path = repositories/ontologies
+	url = git@github.com:celine-eu/ontologies.git

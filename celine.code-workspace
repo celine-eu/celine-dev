@@ -1,61 +1,19 @@
 {
   "folders": [
-    {
-      "name": "celine-dev",
-      "path": "."
-    },
-    {
-      "name": "celine-ai-assistant",
-      "path": "repositories/celine-ai-assistant"
-    },
-    {
-      "name": "celine-frontend",
-      "path": "repositories/celine-frontend"
-    },
-    {
-      "name": "celine-pipelines",
-      "path": "repositories/celine-pipelines"
-    },
-    {
-      "name": "celine-policies",
-      "path": "repositories/celine-policies"
-    },
-    {
-      "name": "celine-dashboards",
-      "path": "repositories/celine-dashboards"
-    },
-    {
-      "name": "celine-sdk",
-      "path": "repositories/celine-sdk"
-    },
-    {
-      "name": "celine-utils",
-      "path": "repositories/celine-utils"
-    },
-    {
-      "name": "celine-webapp",
-      "path": "repositories/celine-webapp"
-    },
-    {
-      "name": "dataset-api",
-      "path": "repositories/dataset-api"
-    },
-    {
-      "name": "digital-twin",
-      "path": "repositories/digital-twin"
-    },
-    {
-      "name": "nudging-tool",
-      "path": "repositories/nudging-tool"
-    },
-    {
-      "name": "rec-registry",
-      "path": "repositories/rec-registry"
-    }
+    { "path": ".", "name": "celine-dev" },
+    { "path": "repositories/celine-ai-assistant" },
+    { "path": "repositories/celine-dashboards" },
+    { "path": "repositories/celine-frontend" },
+    { "path": "repositories/celine-pipelines" },
+    { "path": "repositories/celine-policies" },
+    { "path": "repositories/celine-sdk" },
+    { "path": "repositories/celine-utils" },
+    { "path": "repositories/celine-webapp" },
+    { "path": "repositories/dataset-api" },
+    { "path": "repositories/digital-twin" },
+    { "path": "repositories/nudging-tool" },
+    { "path": "repositories/ontologies" },
+    { "path": "repositories/rec-registry" }
   ],
-  "settings": {
-    "python.analysis.extraPaths": [
-      "src"
-    ]
-  }
+  "settings": {}
 }
