@@ -37,3 +37,6 @@
 [submodule "repositories/ontologies"]
 	path = repositories/ontologies
 	url = git@github.com:celine-eu/ontologies.git
+[submodule "repositories/celine-eu.github.io"]
+	path = repositories/celine-eu.github.io
+	url = git@github.com:celine-eu/celine-eu.github.io.git
