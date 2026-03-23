@@ -94,19 +94,31 @@ http://assistant.celine.localhost {
 }
 
 http://webapp.celine.localhost {
-  
-  # handle sign_out
-  handle /oauth2/* {
-    reverse_proxy host-gw:4180
-  }
+  route {
+    # handle sign_out
+    handle /oauth2/* {
+      reverse_proxy host-gw:4180
+    }
 
-  import auth
-  
-  handle_path /api/assistant/* {
-    reverse_proxy host-gw:8012
+    # service worker must stay fetchable without auth redirects
+    handle /sw.js {
+      reverse_proxy host-gw:3005
+    }
+
+    import auth
+
+    handle_path /api/assistant/* {
+      reverse_proxy host-gw:8012
+    }
+
+    handle /api* {
+      reverse_proxy host-gw:8014
+    }
+
+    handle {
+      reverse_proxy host-gw:3005
+    }
   }
-  reverse_proxy /api* host-gw:8014
-  reverse_proxy host-gw:3005
 }
 
 
