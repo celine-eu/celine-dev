@@ -43,3 +43,6 @@
 [submodule "repositories/celine-training-materials"]
 	path = repositories/celine-training-materials
 	url = git@github.com:celine-eu/celine-training-materials.git
+[submodule "repositories/celine-roi"]
+	path = repositories/celine-roi
+	url = git@github.com:celine-eu/celine-roi.git
