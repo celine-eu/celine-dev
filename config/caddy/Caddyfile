@@ -95,7 +95,17 @@ http://assistant.celine.localhost {
 
 http://webapp.celine.localhost {
   route {
-    # handle sign_out
+    # Intercept sign_out before the catch-all /oauth2/* below: send the browser
+    # to Keycloak's end_session endpoint first (clears the Keycloak browser
+    # session), then Keycloak redirects to sso/oauth2/sign_out which clears
+    # the proxy cookie.  Without this, route{} order means /oauth2/* wins over
+    # the more-specific /oauth2/sign_out in the (auth) snippet → proxy cookie
+    # is cleared but Keycloak SSO session survives → silent re-auth.
+    handle /oauth2/sign_out {
+      redir * http://keycloak.celine.localhost/realms/celine/protocol/openid-connect/logout?client_id=oauth2_proxy&post_logout_redirect_uri=http%3A%2F%2Fsso.celine.localhost%2Foauth2%2Fsign_out 302
+    }
+
+    # handle remaining oauth2 paths (sign_in, callback, auth)
     handle /oauth2/* {
       reverse_proxy host-gw:4180
     }
