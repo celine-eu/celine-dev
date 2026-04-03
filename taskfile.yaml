@@ -249,6 +249,10 @@ tasks:
     cmds:
       - docker compose up -d datasets-db
 
+  stop:pipelines:
+    cmds:
+      - docker rm -f $(docker compose ps  | grep pipeline- | awk '{ print $1 }') || true
+
   start:policies:
     desc: Start pipelines services
     dir: repositories/celine-policies
