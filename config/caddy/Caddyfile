@@ -162,4 +162,8 @@ http://api.celine.localhost {
   handle_path /nudging* {
     reverse_proxy host-gw:8016
   }
+
+  handle_path /flexibility* {
+    reverse_proxy host-gw:8017
+  }
 }
