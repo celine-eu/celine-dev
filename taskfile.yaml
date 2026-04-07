@@ -59,6 +59,7 @@ tasks:
           echo "No repositories matched pattern: '$pattern'" >&2
           exit 1
         fi
+      - task: stop:pipelines
 
   repo:stop:
     desc: "Stop repositories matching pattern (e.g. task repo:stop -- twin)"
