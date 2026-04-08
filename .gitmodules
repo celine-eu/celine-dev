@@ -49,3 +49,6 @@
 [submodule "repositories/flexibility-api"]
 	path = repositories/flexibility-api
 	url = git@github.com:celine-eu/flexibility-api.git
+[submodule "repositories/celine-grid"]
+	path = repositories/celine-grid
+	url = git@github.com:celine-eu/celine-grid.git

@@ -93,6 +93,38 @@ http://assistant.celine.localhost {
   reverse_proxy host-gw:3003
 }
 
+http://roi.celine.localhost {
+  
+  # handle sign_out
+  handle /oauth2/* {
+    reverse_proxy host-gw:4180
+  }
+
+  import auth
+
+  handle_path /api/* {
+    reverse_proxy host-gw:8018
+  }
+
+  reverse_proxy host-gw:3004
+}
+
+http://grid.celine.localhost {
+  
+  # handle sign_out
+  handle /oauth2/* {
+    reverse_proxy host-gw:4180
+  }
+
+  import auth
+
+  handle /api/* {
+    reverse_proxy host-gw:8015
+  }
+
+  reverse_proxy host-gw:3006
+}
+
 http://webapp.celine.localhost {
   route {
     # Intercept sign_out before the catch-all /oauth2/* below: send the browser
