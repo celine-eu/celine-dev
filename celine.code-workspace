@@ -61,7 +61,7 @@
   ],
   "settings": {
     "python.analysis.extraPaths": [
-      "apps"
+      "src"
     ]
   }
 }
