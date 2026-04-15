@@ -8,7 +8,8 @@ Across the CELINE platform, the core technical objective is consistent: ingest a
 
 The CELINE stack combines data engineering, governed APIs, identity and policy enforcement, semantic interoperability, AI-assisted knowledge access, and open-source operational practices. Technologies explicitly referenced across the architecture include Prefect, Meltano, dbt, PostgreSQL, Parquet, OpenLineage, Marquez, Keycloak, OAuth2 Proxy, OPA, OpenAPI, AsyncAPI, RDF/JSON-LD, SHACL, Qdrant, LlamaIndex, and LLM-based assistant services. Repository-specific AGENTS files define the local responsibilities and constraints for each submodule.
 
-## Submodule model
+
+## Submodules model
 
 This repository vendors CELINE component repositories as submodules in `repositories/**`. Agents working here must treat each submodule as the source of truth for its own implementation and local conventions. Cross-repository changes must preserve interface compatibility, shared governance metadata, ontology alignment, and authentication/authorization expectations across the platform.
 
@@ -25,7 +26,7 @@ When changing code from this workspace:
 - pydantic models for settings management, with defaults set to work in the local dev enironment. Use `host.docker.internal` for cross-service references, which works across services running locally / docker.
 - taskfile.yaml for local dev management.  Ensure `run`, `debug` `almebic:*`, `release` cmds are available, see `digital-twin/taskfile.yaml` for reference.
 
-## Submodules
+## Submodules list
 
 ### APIs:  
 - `celine-ai-assistant` backend for the AI assistant service, UI in `celine-frontend/apps/assistant`
@@ -51,3 +52,22 @@ When changing code from this workspace:
 
 Each repository should have a `README.md` with package/repository capabilities and functional details. Details are stored in `docs/*.md` for developers / technical audience where to explain the architecture, design decisions, rationale, features.
 These documents are collected and combined in `repositories/celine-eu.github.io`.
+
+## Rules
+
+- Do not load all AGENTS.md in one shot, select repo by repo based on context
+- Avoid loading full files, prefer selective `sed` and `grep`
+- Ask the user directly to avoid long reasoning / deep dive sessions. Store key finding in `FACTS.md`
+
+## State management
+
+Use `.agents` folder for state management, updating the documents based on the progresses.
+
+- `FACTS.md` store per repository key findings that are costly to derive from code or user interactions
+- `TODO.md` track a plain list and sublist of active tasks to carry on based on direct user requests and implied activities that are functionally required.
+
+your working environment is `celine-dev/.agents/**`. 
+
+Every time a task is completed, update the FACTS.md and TODO.md then invite the user to start a new chat to keep context manageable.
+
+For each repository, replicate the structure eg `celine-dev/.agents/celine-dev/{FACTS.md, TODO.md, ...}` or `celine-dev/.agents/celine-dev/repositories/celine-grid/{FACTS.md, TODO.md, ...}`
