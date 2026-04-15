@@ -25,9 +25,26 @@ When changing code from this workspace:
 - pydantic models for settings management, with defaults set to work in the local dev enironment. Use `host.docker.internal` for cross-service references, which works across services running locally / docker.
 - taskfile.yaml for local dev management.  Ensure `run`, `debug` `almebic:*`, `release` cmds are available, see `digital-twin/taskfile.yaml` for reference.
 
-API:  `celine-ai-assistant`, `celine-grid`, `flexibility-api`, `celine-roi`, `celine-webapp`, `dataset-api`, `digital-twin`, `nudging-tool`, `rec-registry`, 
-pypi packages: `celine-utils`, `celine-sdk`
-tooling / CLIs: `celine-policies`, `ontologies`
+## Submodules
+
+### APIs:  
+- `celine-ai-assistant` backend for the AI assistant service, UI in `celine-frontend/apps/assistant`
+- `celine-webapp` backend for frontend (BFF) to interface with different services for the REC participant webapp, UI in `celine-frontend/apps/webapp`
+- `celine-grid` backend for the Grid resilience service, UI in `celine-frontend/apps/grid`
+- `flexibility-api` backend for the REC flexibility model, used via `celine-webapp` BFF
+- `celine-roi` backend for the PV installation ROI calculator service, UI in `celine-frontend/apps/roi`
+- `dataset-api` permissioned dataset interface API with primarly SQL interface, expose datasets accordingly to `governance.yaml` files in pipelines (`celine-pipelines`)
+- `digital-twin` DT service exposing different domains implementation (community, participant, grid) and shared interfaces (eg  value fetchers over `dataset-api`, simulation and KPIs primitives, broker events listening)
+- `nudging-tool` send notifications over webpush or email. Encapsulate logic in templates and handle deduplication.
+- `rec-registry` API to model a REC around a well-known structure (eg `rec-registry/schemas/community/**/community.schema.json`) and import, export and query details for participant or admins/managers
+
+### PyPI packages 
+- `celine-utils` wrap utilites used in `celine-pipelines` to normalize prefect pipelines, meltano/dbt usage, track `governance.yaml` files and lineage over `openlineage`.
+- `celine-sdk` openapi generated clients and wrappers. `celine-sdk/src/celine/sdk/openapi` is generated and read-only. See `celine-sdk/taskfile.yaml` for `task gen`, which pick up the list from `./services.yaml` and generate the client and pydantic models.
+
+### tooling / CLIs
+`celine-policies` offers two services: 1. `mqtt_auth` JWT API interface for `mosquitto_auth` 2. `celine-policies` CLI that perform idempotent sync in keycloak of `./clients.yaml` for clients/scopes matching. Allow also to import `rec-registry` REC yaml definitions and import users. See `celine-policies/taskfile.yaml` for `keycloak:*` commands.
+`ontologies` CLI to work with the CELINE ontology mappers, a YAML based format that map tables sources schemas to ontolgical output. It also support the versioning, documentation generation, publication of the `w3id.org/celine-eu` CELINE ontology 
 
 
 ## Documenting
