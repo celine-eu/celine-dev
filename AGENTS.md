@@ -24,6 +24,7 @@ When changing code from this workspace:
 - use `src/celine/**` for cross package compatibility
 - alembic with models in repo root, default to pgsql and assume an instance is available at port `:15432` with credentials `postgres:securepassword123`
 - pydantic models for settings management, with defaults set to work in the local dev enironment. Use `host.docker.internal` for cross-service references, which works across services running locally / docker.
+- a `policies/**` folder containing OPA `*.rego` policies evaluated locally by the service for ACL
 - taskfile.yaml for local dev management.  Ensure `run`, `debug` `almebic:*`, `release` cmds are available, see `digital-twin/taskfile.yaml` for reference.
 
 ## Submodules list
@@ -43,10 +44,17 @@ When changing code from this workspace:
 - `celine-utils` wrap utilites used in `celine-pipelines` to normalize prefect pipelines, meltano/dbt usage, track `governance.yaml` files and lineage over `openlineage`.
 - `celine-sdk` openapi generated clients and wrappers. `celine-sdk/src/celine/sdk/openapi` is generated and read-only. See `celine-sdk/taskfile.yaml` for `task gen`, which pick up the list from `./services.yaml` and generate the client and pydantic models.
 
-### tooling / CLIs
+### Tooling / CLIs
 `celine-policies` offers two services: 1. `mqtt_auth` JWT API interface for `mosquitto_auth` 2. `celine-policies` CLI that perform idempotent sync in keycloak of `./clients.yaml` for clients/scopes matching. Allow also to import `rec-registry` REC yaml definitions and import users. See `celine-policies/taskfile.yaml` for `keycloak:*` commands.
 `ontologies` CLI to work with the CELINE ontology mappers, a YAML based format that map tables sources schemas to ontolgical output. It also support the versioning, documentation generation, publication of the `w3id.org/celine-eu` CELINE ontology 
 
+### Github action
+
+Repositories may carry a `.github` with actions workflows. Some are specialized while often those appears.
+
+- `release.yaml` release the docker images and in some cases a pypi package
+- `update-docs.yml` trigger a build workflow in the documentation repo in `celine-eu.github.io`
+- `dependabot.yaml` track dependencies updates, aligned to the repository structure
 
 ## Documenting
 
@@ -64,7 +72,6 @@ These documents are collected and combined in `repositories/celine-eu.github.io`
 Use `.agents` folder for state management, updating the documents based on the progresses.
 
 - `FACTS.md` store per repository key findings that are costly to derive from code or user interactions
-- `TODO.md` track a plain list and sublist of active tasks to carry on based on direct user requests and implied activities that are functionally required.
 
 your working environment is `celine-dev/.agents/**`. 
 
