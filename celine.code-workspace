@@ -61,7 +61,7 @@
   ],
   "settings": {
     "python.analysis.extraPaths": [
-      "packages/celine-superset-cli/src"
+      "src"
     ]
   }
 }
