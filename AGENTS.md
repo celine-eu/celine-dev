@@ -69,12 +69,9 @@ These documents are collected and combined in `repositories/celine-eu.github.io`
 
 ## State management
 
-Use `.agents` folder for state management, updating the documents based on the progresses.
+Use `celine-dev/.agents/**` folder for state management.
 
-- `FACTS.md` store per repository key findings that are costly to derive from code or user interactions
+Read `FACTS.md` before working on a repository for key findings that are costly to derive from code or user interactions.
 
-your working environment is `celine-dev/.agents/**`. 
+For each repository, replicate the structure eg `celine-dev/.agents/[repo name]/FACTS.md` and update once a user requested task is completed.
 
-Every time a task is completed, update the FACTS.md and TODO.md then invite the user to start a new chat to keep context manageable.
-
-For each repository, replicate the structure eg `celine-dev/.agents/celine-dev/{FACTS.md, TODO.md, ...}` or `celine-dev/.agents/celine-dev/repositories/celine-grid/{FACTS.md, TODO.md, ...}`
