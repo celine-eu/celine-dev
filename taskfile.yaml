@@ -253,8 +253,8 @@ tasks:
 
   stop:pipelines:
     cmds:
-      - docker rm -f $(docker compose ps  | grep pipeline- | awk '{ print $1 }')
-        || true
+      - |
+        docker rm -f $(docker ps  | grep celine-pipelines-pipeline- | awk '{ print $1 }') || true
 
   start:policies:
     desc: Start pipelines services

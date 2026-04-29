@@ -102,7 +102,7 @@ http://roi.celine.localhost {
 
   import auth
 
-  handle_path /api/* {
+  handle /api/* {
     reverse_proxy host-gw:8018
   }
 
