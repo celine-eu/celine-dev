@@ -76,6 +76,11 @@ http://prefect.celine.localhost {
   reverse_proxy host-gw:4200
 }
 
+http://mlflow.celine.localhost {
+  import auth
+  reverse_proxy host-gw:5000
+}
+
 # UIs
 http://assistant.celine.localhost {
   

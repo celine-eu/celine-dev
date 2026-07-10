@@ -52,3 +52,6 @@
 [submodule "repositories/celine-grid"]
 	path = repositories/celine-grid
 	url = git@github.com:celine-eu/celine-grid.git
+[submodule "repositories/celine-forecasting"]
+	path = repositories/celine-forecasting
+	url = git@github.com:celine-eu/celine-forecasting.git
