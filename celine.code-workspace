@@ -14,6 +14,9 @@
       "path": "repositories/celine-eu.github.io"
     },
     {
+      "path": "repositories/celine-forecasting"
+    },
+    {
       "path": "repositories/celine-frontend"
     },
     {
@@ -61,7 +64,7 @@
   ],
   "settings": {
     "python.analysis.extraPaths": [
-      "tests"
+      "src"
     ]
   }
 }

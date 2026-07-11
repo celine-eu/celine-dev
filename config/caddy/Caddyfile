@@ -77,8 +77,25 @@ http://prefect.celine.localhost {
 }
 
 http://mlflow.celine.localhost {
-  import auth
-  reverse_proxy host-gw:5000
+  handle /oauth2/* {
+    reverse_proxy host-gw:4180
+  }
+
+  # Service API: bypass oauth2-proxy, MLflow auth plugin validates Bearer JWTs.
+  # /ajax-api/* is the UI's internal XHR path and must stay behind oauth2-proxy.
+  @svc_api {
+    path /api/*
+    not path /ajax-api/*
+  }
+  handle @svc_api {
+    reverse_proxy host-gw:5000
+  }
+
+  # Everything else (UI + ajax-api) goes through oauth2-proxy for browser login
+  handle {
+    import auth
+    reverse_proxy host-gw:5000
+  }
 }
 
 # UIs
