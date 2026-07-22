@@ -57,4 +57,4 @@
 	url = git@github.com:celine-eu/celine-forecasting.git
 [submodule "repositories/onboarding"]
 	path = repositories/onboarding
-	url = git@github.com:celine-eu/onboarding.git
+	url = https://github.com/celine-eu/onboarding.git

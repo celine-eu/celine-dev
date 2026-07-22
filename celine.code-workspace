@@ -4,7 +4,6 @@
     { "path": "repositories/celine-ai-assistant" },
     { "path": "repositories/celine-dashboards" },
     { "path": "repositories/celine-eu.github.io" },
-    { "path": "repositories/celine-forecasting" },
     { "path": "repositories/celine-frontend" },
     { "path": "repositories/celine-grid" },
     { "path": "repositories/celine-pipelines" },
@@ -21,6 +20,5 @@
     { "path": "repositories/onboarding" },
     { "path": "repositories/ontologies" },
     { "path": "repositories/rec-registry" }
-  ],
-  "settings": {}
+  ]
 }
