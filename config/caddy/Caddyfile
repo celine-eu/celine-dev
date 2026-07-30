@@ -36,6 +36,32 @@
     }
 }
 
+# The same forward_auth, WITHOUT the redirect on 401.
+#
+# For an API consumed by XHR a 302 to an HTML login page is worse than useless:
+# fetch() follows it cross-origin and the browser reports a CORS failure, so the
+# client sees an opaque error rather than "your session lapsed". Letting the 401
+# through lets the client redirect deliberately — which is what both
+# `onboarding/ui/src/lib/api/client.ts` and `apps/grid/src/lib/api.ts` do.
+#
+# Use this for /api paths on a host whose *pages* use (auth).
+(auth_api) {
+    @needs_auth not path /oauth2/*
+    forward_auth @needs_auth host-gw:4180 {
+        uri /oauth2/auth
+
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-Host {host}
+
+        copy_headers \
+            X-Auth-Request-User \
+            X-Auth-Request-Email \
+            X-Auth-Request-Groups \
+            X-Auth-Request-Access-Token \
+            Authorization
+    }
+}
+
 http://superset.celine.localhost {
     import auth
     reverse_proxy host-gw:8088
@@ -131,8 +157,58 @@ http://roi.celine.localhost {
   reverse_proxy host-gw:3004
 }
 
+# REC onboarding. One host serving two audiences: the participant wizard, which
+# is anonymous by design, and the operator console, which is not. So auth is
+# scoped to paths rather than to the host — the whole reason the console lives
+# under a single /admin prefix on both the page and the API side.
+#
+# `route` because directive order matters here: /oauth2/sign_out has to be seen
+# before the /oauth2/* catch-all, and the admin matchers before the public ones.
+http://onboarding.celine.localhost {
+  # Two tokens rather than a bare `/admin*` prefix, so a future /administration
+  # is not swallowed — the same care `security/middleware.py::is_admin_path`
+  # takes on the service side.
+  @admin_pages path /admin /admin/*
+  @admin_api path /api/admin /api/admin/*
+
+  route {
+    # Clear the Keycloak SSO session, not just the proxy cookie — otherwise the
+    # next visit silently re-authenticates. Same trap the webapp block documents.
+    handle /oauth2/sign_out {
+      redir * http://keycloak.celine.localhost/realms/celine/protocol/openid-connect/logout?client_id=oauth2_proxy&post_logout_redirect_uri=http%3A%2F%2Fsso.celine.localhost%2Foauth2%2Fsign_out 302
+    }
+
+    handle /oauth2/* {
+      reverse_proxy host-gw:4180
+    }
+
+    # Console API: 401 passes through so the SPA can redirect itself.
+    handle @admin_api {
+      import auth_api
+      reverse_proxy host-gw:8040
+    }
+
+    # Console pages: browser navigation, so 401 becomes a sign-in redirect.
+    handle @admin_pages {
+      import auth
+      reverse_proxy host-gw:3000
+    }
+
+    # Everything below is the public wizard and must stay anonymous, including
+    # /_app/* — the console's own JavaScript is served from there, so gating it
+    # would break the login page it is supposed to protect.
+    handle /api/* {
+      reverse_proxy host-gw:8040
+    }
+
+    handle {
+      reverse_proxy host-gw:3000
+    }
+  }
+}
+
 http://grid.celine.localhost {
-  
+
   # handle sign_out
   handle /oauth2/* {
     reverse_proxy host-gw:4180
@@ -219,5 +295,13 @@ http://api.celine.localhost {
 
   handle_path /flexibility* {
     reverse_proxy host-gw:8017
+  }
+
+  # Onboarding, for service-to-service callers (onboarding-cli, scripted
+  # approvals). No forward_auth: these arrive with their own bearer token, which
+  # the service verifies against the realm's JWKS itself. The browser path is
+  # onboarding.celine.localhost above.
+  handle_path /onboarding* {
+    reverse_proxy host-gw:8040
   }
 }
