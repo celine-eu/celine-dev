@@ -1,77 +1,82 @@
-## Introduction
+<!-- harness-standard v4 — issued by the agent harness. Do not edit; replace it with `python -m harness upgrade <target>`. -->
 
-CELINE is an open source, modular, and federated digital ecosystem for Local Energy Communities and related stakeholders. Its purpose is to transform heterogeneous cross-sector data into trusted digital services, decision support, and community-facing tools through a platform that prioritises interoperability, data sovereignty, traceability, and openness.
+# Agent Guide
 
-The `celine-dev` repository is the development and integration workspace for that ecosystem. It assembles the main CELINE repositories as submodules under `repositories/**`, providing a single place to coordinate cross-repository development, integration testing, interface alignment, and local platform composition. This repository should be treated as the operational view of the full system rather than the implementation home of one isolated component.
+This file is the entry point. It is **navigation and constraints**: where things are, and
+what you may not do.
 
-Across the CELINE platform, the core technical objective is consistent: ingest and govern distributed data, refine it into reusable data products, expose it through stable interfaces, enrich it through semantic and analytical layers, and deliver it safely to digital services such as dashboards, Digital Twins, AI assistants, registries, and nudging applications. Each submodule implements one bounded part of that system, but all components are expected to remain compatible with the shared architectural principles, API contracts, governance rules, and semantic models defined for the wider CELINE ecosystem.
+It says nothing about this repository in particular. **It is standard — byte-identical in
+every repository carrying this harness** — so having read it once you have read it
+everywhere. Nothing repository-specific is ever added here. Content that seems to belong
+in this file belongs in one of the homes below instead, and the rule that decides which is
+in the rulebook.
 
-The CELINE stack combines data engineering, governed APIs, identity and policy enforcement, semantic interoperability, AI-assisted knowledge access, and open-source operational practices. Technologies explicitly referenced across the architecture include Prefect, Meltano, dbt, PostgreSQL, Parquet, OpenLineage, Marquez, Keycloak, OAuth2 Proxy, OPA, OpenAPI, AsyncAPI, RDF/JSON-LD, SHACL, Qdrant, LlamaIndex, and LLM-based assistant services. Repository-specific AGENTS files define the local responsibilities and constraints for each submodule.
+## Read in this order
 
+1. This file.
+2. `.agents/README.md` — the rulebook: where work is recorded, and how. Also standard,
+   also identical everywhere.
+3. `.agents/references.local.md` — gitignored, and it names this repository's
+   **companion**: the parallel directory holding the knowledge, playbooks, plans and work.
+   The companion is the only source of truth for all four.
+4. The companion's `knowledge/` — what is true of this repository and not visible in its
+   code. List the directory; read what the task needs.
+5. `docs/`, on demand. Never speculatively.
 
-## Submodules model
+The two standard files are the same wherever they appear. Having read them at one root, do
+not read them again in a repository nested inside it — read that repository's companion
+`knowledge/` instead, because that is the part which differs. **Each repository has its
+own companion**; a nested repository does not share the outer one's.
 
-This repository vendors CELINE component repositories as submodules in `repositories/**`. Agents working here must treat each submodule as the source of truth for its own implementation and local conventions. Cross-repository changes must preserve interface compatibility, shared governance metadata, ontology alignment, and authentication/authorization expectations across the platform.
+**If a copy of a standard file does differ, the divergence is the finding.** Report it;
+do not follow it and do not quietly reconcile it.
 
-When changing code from this workspace:
-- prefer making changes in the owning submodule rather than adding ad hoc integration logic in `celine-dev`
-- verify whether the change affects API contracts, data schemas, governance metadata, ontology mappings, or identity/policy behaviour
-- keep documentation and integration configuration aligned with the submodule state
+## Where things are
 
-### Python packages
+| Looking for | Go to |
+|---|---|
+| what this repository is and does | its `README.md`, then `docs/` |
+| where the companion is | `.agents/references.local.md` |
+| what is true of the code and not obvious from reading it | companion `knowledge/` |
+| how a repeated procedure is performed | companion `playbooks/` |
+| what is being worked on, and how far it has got | companion `plans/`, `work/` |
+| why a technical choice was made | `docs/decisions/` |
+| what the product must do | the specifications in `docs/` |
+| whether a requirement is verified | `.agents/trace/`, or the tool named in `.agents/harness.toml` |
+| what is broken | the issue tracker. Never a file in this repository |
+| how the parts are composed, built and run | the build and composition files at the root |
 
-- always use `uv` as package manager, with hatching tool for building and `python-semantic-release` as dev deps.
-- use `src/celine/**` for cross package compatibility
-- alembic with models in repo root, default to pgsql and assume an instance is available at port `:15432` with credentials `postgres:securepassword123`
-- pydantic models for settings management, with defaults set to work in the local dev enironment. Use `host.docker.internal` for cross-service references, which works across services running locally / docker.
-- a `policies/**` folder containing OPA `*.rego` policies evaluated locally by the service for ACL
-- taskfile.yaml for local dev management.  Ensure `run`, `debug` `almebic:*`, `release` cmds are available, see `digital-twin/taskfile.yaml` for reference.
+This table is fixed because the structure is fixed. What varies between repositories is
+what those directories hold — found by listing them, never by an index maintained here. An
+index here would be a second copy of a fact, and the copy is what goes stale.
 
-## Submodules list
+## Behavioural settings
 
-### APIs:  
-- `celine-ai-assistant` backend for the AI assistant service, UI in `celine-frontend/apps/assistant`
-- `celine-webapp` backend for frontend (BFF) to interface with different services for the REC participant webapp, UI in `celine-frontend/apps/webapp`
-- `celine-grid` backend for the Grid resilience service, UI in `celine-frontend/apps/grid`
-- `flexibility-api` backend for the REC flexibility model, used via `celine-webapp` BFF
-- `celine-roi` backend for the PV installation ROI calculator service, UI in `celine-frontend/apps/roi`
-- `dataset-api` permissioned dataset interface API with primarly SQL interface, expose datasets accordingly to `governance.yaml` files in pipelines (`celine-pipelines`)
-- `digital-twin` DT service exposing different domains implementation (community, participant, grid) and shared interfaces (eg  value fetchers over `dataset-api`, simulation and KPIs primitives, broker events listening)
-- `nudging-tool` send notifications over webpush or email. Encapsulate logic in templates and handle deduplication.
-- `rec-registry` API to model a REC around a well-known structure (eg `rec-registry/schemas/community/**/community.schema.json`) and import, export and query details for participant or admins/managers
+The switches, not the rules. What each one serves is stated in the rulebook.
 
-### PyPI packages 
-- `celine-utils` wrap utilites used in `celine-pipelines` to normalize prefect pipelines, meltano/dbt usage, track `governance.yaml` files and lineage over `openlineage`.
-- `celine-sdk` openapi generated clients and wrappers. `celine-sdk/src/celine/sdk/openapi` is generated and read-only. See `celine-sdk/taskfile.yaml` for `task gen`, which pick up the list from `./services.yaml` and generate the client and pydantic models.
+- **Ask rather than decide** when a request needs a requirement that does not exist yet.
+  Ask directly, and do not proceed on an inferred requirement.
+- **Write the plan first** for anything non-trivial, and create its work directory before
+  the first change of any phase.
+- **Establish the baseline before changing anything**, so a pre-existing failure is never
+  attributed to your change.
+- **Report faithfully.** Name what ran, what did not, and what was skipped.
+- **Check whether the change crosses a seam** — an interface another component depends on.
+  A change that crosses one is not local, however local it compiles. Which seams exist
+  here is recorded in the companion `knowledge/`.
+- **Change the component that owns the behaviour**, not the place that consumes it. A
+  workaround written at the consumer is a defect left in the owner.
 
-### Tooling / CLIs
-`celine-policies` offers two services: 1. `mqtt_auth` JWT API interface for `mosquitto_auth` 2. `celine-policies` CLI that perform idempotent sync in keycloak of `./clients.yaml` for clients/scopes matching. Allow also to import `rec-registry` REC yaml definitions and import users. See `celine-policies/taskfile.yaml` for `keycloak:*` commands.
-`ontologies` CLI to work with the CELINE ontology mappers, a YAML based format that map tables sources schemas to ontolgical output. It also support the versioning, documentation generation, publication of the `w3id.org/celine-eu` CELINE ontology 
+## Maintaining this file
 
-### Github action
+**Read only.** Do not edit it, and do not edit `.agents/README.md` beside it. Neither is
+this repository's document.
 
-Repositories may carry a `.github` with actions workflows. Some are specialized while often those appears.
+A change lands by changing the harness that issues it, after which every repository
+receives the same text — `python -m harness upgrade <target>`. Editing one copy creates
+the drift the standard exists to remove, and the next reader cannot tell an improvement
+from an accident. REQ-0012 reports a copy that has been altered.
 
-- `release.yaml` release the docker images and in some cases a pypi package
-- `update-docs.yml` trigger a build workflow in the documentation repo in `celine-eu.github.io`
-- `dependabot.yaml` track dependencies updates, aligned to the repository structure
-
-## Documenting
-
-Each repository should have a `README.md` with package/repository capabilities and functional details. Details are stored in `docs/*.md` for developers / technical audience where to explain the architecture, design decisions, rationale, features.
-These documents are collected and combined in `repositories/celine-eu.github.io`.
-
-## Rules
-
-- Do not load all AGENTS.md in one shot, select repo by repo based on context
-- Avoid loading full files, prefer selective `sed` and `grep`
-- Ask the user directly to avoid long reasoning / deep dive sessions. Store key finding in `FACTS.md`
-
-## State management
-
-Use `celine-dev/.agents/**` folder for state management.
-
-Read `FACTS.md` before working on a repository for key findings that are costly to derive from code or user interactions.
-
-For each repository, replicate the structure eg `celine-dev/.agents/[repo name]/FACTS.md` and update once a user requested task is completed.
-
+Anything you were about to add here has a home: a trap goes to the companion `knowledge/`, a
+procedure to its `playbooks/`, a rationale to `docs/decisions/`, a description of the
+system to `docs/`, and a defect to the issue tracker.

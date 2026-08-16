@@ -1,4 +1,9 @@
 *.zip
 /tmp
 .claude
-.agents
+
+# Execution state: transient, and the plan is what survives
+.agents/work/
+
+# Agent material is not published from this repository.
+.agents/

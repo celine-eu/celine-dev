@@ -1,5 +1,100 @@
 version: "3"
 
+# Every task here narrates itself with `echo`. Without this, Task also echoes
+# each command, and the composition tasks below embed the whole table in theirs.
+silent: true
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  THE COMPOSITION TABLE
+#
+#  This is the graph. `.agents/knowledge/the-component-model.md` tells readers
+#  that this file is the composition layer and to read it rather than
+#  reconstruct the graph from the components — these two tables are what it
+#  means. Adding a service to the platform means adding a row here; nothing
+#  else in this file needs to change.
+#
+#  `#` starts a comment inside a table. Blank lines are ignored. Column
+#  alignment is cosmetic — every field is trimmed before use.
+# ═══════════════════════════════════════════════════════════════════════════
+vars:
+  TMUX_SESSION: celine
+  TMUX_CONF: config/dev/tmux.conf
+
+  # The platform: what `task docker:start` and `task dev:start` bring up, in the
+  # order they must start.
+  #
+  #   repository | compose services to start (empty = every service in the file)
+  #
+  # The first two rows are infrastructure rather than CELINE services, and they
+  # are here because nothing else runs without them:
+  #   celine-pipelines/datasets-db  the platform's Postgres on :15432. Every
+  #                                 service's database lives in it, created by
+  #                                 that service's own db-create/migrate job.
+  #   celine-policies               keycloak, oauth2-proxy, mosquitto, redis.
+  #                                 Caddy forward_auths to oauth2-proxy on :4180
+  #                                 for every authenticated route.
+  # The rest of celine-pipelines — marquez and prefect — is opt-in below.
+  #
+  # `.` is this repository, the Caddy that fronts everything. It comes after
+  # celine-policies for the forward_auth above. Note that its celine_proxy is
+  # normally scaled to 0 by the generated docker-compose.override.yaml, because
+  # a shared proxy on this machine serves the same Caddyfile — that is expected,
+  # and the file explains itself.
+  DOCKER_STACKS: |
+    celine-pipelines    | datasets-db
+    celine-policies     |
+    .                   |
+    dataset-api         |
+    digital-twin        |
+    rec-registry        |
+    flexibility-api     |
+    nudging-tool        |
+    celine-ai-assistant |
+    celine-grid         |
+    celine-roi          |
+    celine-webapp       |
+    onboarding          |
+    celine-frontend     |
+
+  # Opt-in: started by `STACKS=all`, or by being named. Nothing in the core
+  # graph depends on any of it, and it is slow to come up.
+  #   celine-pipelines  the lineage and orchestration halves — marquez, prefect
+  #   celine-dashboards superset, its worker and beat, redis, jupyter
+  #   celine-forecasting mlflow and its own MinIO
+  DOCKER_STACKS_EXTRA: |
+    celine-pipelines    | marquez-web marquez-api prefect-server prefect-worker
+    celine-dashboards   |
+    celine-forecasting  |
+
+  # The services `dev:*` lifts out of Docker and runs from source, under hot
+  # reload, one per tmux window.
+  #
+  #   repository | compose service | tmux window | host port | task to run
+  #
+  # The port is the contract: `config/caddy/Caddyfile` reverse_proxies to
+  # `host-gw:<port>` and mosquitto reaches mqtt_auth at
+  # `host.docker.internal:8009`, so a container publishing the port and a host
+  # process bound to it are interchangeable. A service reached by compose
+  # service name instead does not belong in this table.
+  # celine-policies' mqtt_auth is deliberately absent: it is infrastructure, and
+  # mosquitto will not start until it is healthy. Develop it in its own repo.
+  DEV_SERVICES: |
+    dataset-api         | dataset-api | dataset-api    | 8001 | run
+    digital-twin        | dt          | digital-twin   | 8002 | run
+    rec-registry        | api         | rec-registry   | 8004 | run
+    celine-ai-assistant | api         | assistant-api  | 8012 | run
+    celine-webapp       | api         | webapp-api     | 8014 | run
+    celine-grid         | api         | grid-api       | 8015 | run
+    nudging-tool        | api         | nudging-api    | 8016 | run
+    flexibility-api     | api         | flexibility    | 8017 | run
+    celine-roi          | api         | roi-api        | 8018 | run
+    onboarding          | backend     | onboarding-api | 8040 | run:api
+    onboarding          | frontend    | onboarding-ui  | 3000 | run:ui
+    celine-frontend     | assistant   | assistant-ui   | 3003 | dev:assistant
+    celine-frontend     | roi         | roi-ui         | 3004 | dev:roi
+    celine-frontend     | webapp      | webapp-ui      | 3005 | dev:webapp
+    celine-frontend     | grid        | grid-ui        | 3006 | dev:grid
+
 tasks:
   repo:pull:
     desc: "Git pull in every repositories/* directory"
@@ -22,80 +117,6 @@ tasks:
             echo "==> Release for $d"
             (cd "$d" && task release || true)
         done
-
-  repo:start:
-    desc: "Start repositories matching pattern (e.g. task repo:start -- twin)"
-    cmds:
-      - task start:pipelines:db
-      - |
-        set -eu
-        pattern="{{.CLI_ARGS}}"
-
-        matched=0
-
-        # Special-case: dev proxy lives at repo root
-        case "proxy" in
-          *"$pattern"*)
-            echo "==> starting proxy (repo root)"
-            docker compose up -d
-            matched=1
-            ;;
-        esac
-
-        for d in repositories/*; do
-          [ -d "$d" ] || continue
-          name="$(basename "$d")"
-          case "$name" in
-            *"$pattern"*)
-              echo "==> starting $name"
-              (cd "$d" && task setup || true)
-              (cd "$d" && docker compose down && docker compose up -d --build)
-              matched=1
-              ;;
-          esac
-        done
-
-        if [ "$matched" -eq 0 ]; then
-          echo "No repositories matched pattern: '$pattern'" >&2
-          exit 1
-        fi
-      - task: stop:pipelines
-
-  repo:stop:
-    desc: "Stop repositories matching pattern (e.g. task repo:stop -- twin)"
-    cmds:
-      - docker compose down
-      - |
-        set -eu
-        pattern="{{.CLI_ARGS}}"
-
-        matched=0
-
-        # Special-case: dev proxy lives at repo root
-        case "proxy" in
-          *"$pattern"*)
-            echo "==> stopping proxy (repo root)"
-            docker compose down
-            matched=1
-            ;;
-        esac
-
-        for d in repositories/*; do
-          [ -d "$d" ] || continue
-          name="$(basename "$d")"
-          case "$name" in
-            *"$pattern"*)
-              echo "==> stopping $name"
-              (cd "$d" && docker compose down)
-              matched=1
-              ;;
-          esac
-        done
-
-        if [ "$matched" -eq 0 ]; then
-          echo "No repositories matched pattern: '$pattern'" >&2
-          exit 1
-        fi
 
   repo:env:pack:
     desc: "Scan repositories/**/.env and pack them into a zip preserving structure"
@@ -231,78 +252,563 @@ tasks:
 
         echo "Generated $WORKSPACE_FILE"
 
-  start:proxy:
-    desc: Start service proxy
-    deps: [ start:policies ]
-    cmds:
-      - docker compose up -d
+  # ═════════════════════════════════════════════════════════════════════════
+  #  LIFECYCLE: two modes
+  #
+  #    task docker:*  everything in containers. The mode that exercises the
+  #                   Dockerfiles and the compose `environment:` blocks, so it
+  #                   is the one that actually validates a change to either.
+  #    task dev:*     containers up, then the application services replaced by
+  #                   host processes under hot reload, in a tmux session named
+  #                   `celine`, one window per service.
+  #
+  #  `dev:*` is docker-then-replace, not an alternative to containers. It
+  #  brings the whole container stack up FIRST — so ordering, health
+  #  conditions and the one-shot jobs (db-create, migrate, seed-templates,
+  #  dataset-api-import) all really run — and only then stops the application
+  #  containers and starts host processes on the same ports.
+  #
+  #  A change to a Dockerfile, a compose `environment:` block or a dependency
+  #  is NOT verified by `dev:*` for any service that mode replaces: those host
+  #  processes read the component's own .env and never see the compose
+  #  environment. Verify those with `task docker:restart`.
+  #
+  #  Both modes share the same table above. Both are idempotent: re-running a
+  #  start converges on the same state rather than erroring.
+  # ═════════════════════════════════════════════════════════════════════════
 
-  start:pipelines:services:
-    deps: [ start:pipelines:db ]
-    desc: Start pipelines services
-    dir: repositories/celine-pipelines
-    cmds:
-      - docker compose up -d marquez-web marquez-api prefect-server
-        prefect-worker
-
-  start:pipelines:db:
-    desc: Start pipelines services
-    dir: repositories/celine-pipelines
-    cmds:
-      - docker compose up -d datasets-db
-
-  stop:pipelines:
+  docker:start:
+    desc: "Docker: bring every stack up, in dependency order (STACKS=all|<repo>... BUILD=true)"
     cmds:
       - |
-        docker rm -f $(docker ps  | grep celine-pipelines-pipeline- | awk '{ print $1 }') || true
+        set -eu
+        # Naming stacks explicitly makes both tables eligible; `core` is the
+        # platform only. A repository in both tables (celine-pipelines) is
+        # visited twice, which is what starts its core half first.
+        case "{{.STACKS | default "core"}}" in
+          core) stacks='{{.DOCKER_STACKS}}' ;;
+          *)    stacks='{{.DOCKER_STACKS}}
+        {{.DOCKER_STACKS_EXTRA}}' ;;
+        esac
+        case "{{.STACKS | default "core"}}" in
+          core|all) ;;
+          *) only=" {{.STACKS}} " ;;
+        esac
 
-  start:policies:
-    desc: Start pipelines services
-    dir: repositories/celine-policies
-    cmds:
-      - docker compose up -d
+        build=""
+        [ "{{.BUILD | default "false"}}" = "true" ] && build="--build"
 
-  start:dataset-api:
-    desc: Start dataset-api services
-    deps: [ start:pipelines ]
-    dir: repositories/dataset-api
-    cmds:
-      - docker compose up -d
+        # A STACKS name that is in no table starts nothing and says nothing,
+        # which reads as "the stack is already up". Catch it before the loop.
+        for want in ${only:-}; do
+          printf '%s\n%s\n' '{{.DOCKER_STACKS}}' '{{.DOCKER_STACKS_EXTRA}}' \
+            | sed -e 's/|.*$//' -e 's/[[:space:]]//g' | grep -qx "$want" \
+            || echo "  ! STACKS names '$want', which is in no stack table — nothing to start for it" >&2
+        done
 
-  start:db:
-    desc: Start dataset-api services
-    dir: repositories/celine-pipelines
-    cmds:
-      - docker compose up -d datasets-db
+        printf '%s\n' "$stacks" \
+          | sed -e 's/#.*$//' -e 's/[[:space:]]*|[[:space:]]*/|/g' \
+                -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' \
+          | grep -v '^$' \
+          | while IFS='|' read -r repo services; do
+              if [ -n "${only:-}" ]; then
+                case "$only" in *" $repo "*) ;; *) continue ;; esac
+              fi
+              [ "$repo" = "." ] && dir="." || dir="repositories/$repo"
+              if [ ! -d "$dir" ]; then
+                echo "  ! $repo — not checked out, skipped" >&2
+                continue
+              fi
+              echo "==> up  $repo ${services:-(all services)}"
+              # No `set -e` here on purpose: one stack failing to come up must
+              # not hide the state of the rest. dev:doctor is what reports it.
+              (cd "$dir" && docker compose up -d $build $services) \
+                || echo "  ! $repo — compose up failed" >&2
+            done
 
-  start:digital-twin:
-    desc: Start dataset-api services
-    deps: [ start:dataset-api ]
-    dir: repositories/digital-twin
-    cmds:
-      - docker compose up -d
+        # celine-pipelines' pipeline-* services are one-shot jobs. A bare
+        # `up -d` there would leave a dozen exited containers behind; the
+        # table starts only the long-running ones, and this clears any that
+        # an earlier run left.
+        ids=$(docker ps -aq --filter 'name=celine-pipelines-pipeline-' 2>/dev/null || true)
+        [ -n "$ids" ] && docker rm -f $ids >/dev/null 2>&1 || true
+        exit 0
 
-  start:rec-registry:
-    desc: Start rec-registry
-    dir: repositories/rec-registry
+  docker:stop:
+    desc: "Docker: stop every stack, reverse order (STACKS=<repo>... to scope it)"
     cmds:
-      - docker compose up -d
+      - |
+        set +e
+        # There is no option here to pass `-v`, and there must not be. This stack
+        # keeps every service's database in celine-pipelines' datasets-db volume,
+        # so `docker compose down -v` is data loss rather than a clean slate — and
+        # a flag that wipes the databases is one typo away from being used by
+        # accident. Removing a volume deliberately is `docker volume rm`, named,
+        # by hand.
+        only=""
+        case "{{.STACKS | default "all"}}" in
+          all|core) ;;
+          *) only=" {{.STACKS}} " ;;
+        esac
 
-  start:superset:
-    desc: Start superset services
-    dir: repositories/celine-dashboards
-    cmds:
-      - docker compose up -d
+        printf '%s\n%s\n' '{{.DOCKER_STACKS}}' '{{.DOCKER_STACKS_EXTRA}}' \
+          | sed -e 's/#.*$//' -e 's/|.*$//' \
+                -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' \
+          | grep -v '^$' \
+          | tac \
+          | awk '!seen[$0]++' \
+          | while read -r repo; do
+              skip=no
+              [ -n "$only" ] && case "$only" in *" $repo "*) ;; *) skip=yes ;; esac
+              [ "$repo" = "." ] && dir="." || dir="repositories/$repo"
+              [ -d "$dir" ] || skip=yes
+              case "$skip" in
+                no) echo "==> down  $repo"
+                    (cd "$dir" && COMPOSE_IGNORE_ORPHANS=true docker compose down --remove-orphans) >/dev/null 2>&1 ;;
+              esac
+            done
+        echo "Stopped."
+        exit 0
 
-  start:base:
-    desc: Start dev services
+  docker:restart:
+    desc: "Docker: full restart in containers (BUILD=true to rebuild the images)"
     cmds:
-      - task: start:proxy
-      - task: start:pipelines
+      - task: docker:stop
+        vars: {STACKS: '{{.STACKS}}'}
+      - task: docker:start
+        vars: {STACKS: '{{.STACKS}}', BUILD: '{{.BUILD}}'}
 
-  start:dev:api:
-    desc: start services for api development
+  docker:ps:
+    desc: "Docker: what is up, across every stack"
     cmds:
-      - task: start:proxy
-      - task: start:pipelines:db
-      - task: start:policies
+      - |
+        set +e
+        printf '%s\n%s\n' '{{.DOCKER_STACKS}}' '{{.DOCKER_STACKS_EXTRA}}' \
+          | sed -e 's/#.*$//' -e 's/|.*$//' \
+                -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' \
+          | grep -v '^$' \
+          | awk '!seen[$0]++' \
+          | while read -r repo; do
+              [ "$repo" = "." ] && dir="." || dir="repositories/$repo"
+              [ -d "$dir" ] || continue
+              out=$(cd "$dir" && docker compose ps --format '{{`{{.Name}}`}}|{{`{{.State}}`}}|{{`{{.Ports}}`}}' 2>/dev/null || true)
+              [ -n "$out" ] && { echo "── $repo"; printf '%s\n' "$out" | sed 's/^/  /' | column -t -s'|'; }
+            done
+        exit 0
+
+  # ── Local development ────────────────────────────────────────────────────
+
+  dev:start:
+    desc: "Dev: containers up, then every service from source with hot reload, in tmux"
+    # For the `tmux attach` at the end. ATTACH=false skips it — that is the form
+    # an e2e runner wants, paired with `task dev:wait`.
+    interactive: true
+    cmds:
+      - task: dev:doctor
+        vars: {STRICT: "true"}
+      - |
+        set -eu
+        sess='{{.TMUX_SESSION}}'
+        if tmux has-session -t "$sess" 2>/dev/null; then
+          echo "Session '$sess' is already up — reconciling windows only."
+          echo "The container phase was skipped: re-running 'docker compose up -d'"
+          echo "would try to bind a port a host process already holds. For a full"
+          echo "cycle run: task dev:restart"
+        else
+          task docker:start STACKS='{{.STACKS}}' BUILD='{{.BUILD}}'
+        fi
+      - task: dev:containers:stop
+      - task: dev:tmux:ensure
+      - |
+        echo
+        echo "Up. Attach with:  task dev:attach     Status:  task dev:status"
+        echo "Stop everything:  task dev:stop"
+        {{if ne .ATTACH "false"}}
+        [ -t 1 ] && tmux attach -t '{{.TMUX_SESSION}}' || true
+        {{end}}
+        exit 0
+    vars:
+      ATTACH: '{{.ATTACH | default "true"}}'
+
+  dev:stop:
+    desc: "Dev: stop the host processes and every container (DOCKER=false keeps the containers)"
+    cmds:
+      - task: dev:procs:stop
+      - |
+        if [ "{{.DOCKER | default "true"}}" = "true" ]; then
+          task docker:stop
+        else
+          echo "Containers left running (DOCKER=false)."
+        fi
+        exit 0
+
+  dev:restart:
+    desc: "Dev: full cycle — stop everything, then start it again"
+    cmds:
+      - task: dev:stop
+      - task: dev:start
+        vars: {STACKS: '{{.STACKS}}', BUILD: '{{.BUILD}}', ATTACH: '{{.ATTACH}}'}
+
+  dev:attach:
+    desc: "Dev: attach to the tmux session"
+    interactive: true
+    cmds:
+      - tmux attach -t '{{.TMUX_SESSION}}'
+
+  dev:status:
+    desc: "Dev: which services are answering, and where each one is running"
+    cmds:
+      - |
+        # Task runs its commands under errexit, and almost every probe below is
+        # expected to fail — a refused connection is the answer, not an error.
+        set +e
+        sess='{{.TMUX_SESSION}}'
+        windows=""
+        tmux has-session -t "$sess" 2>/dev/null \
+          && windows=$(tmux list-windows -t "$sess" -F '#W' 2>/dev/null)
+
+        printf '%-16s %-6s %-10s %s\n' SERVICE PORT LISTENING RUNNING-AS
+        printf '%s\n' '{{.DEV_SERVICES}}' \
+          | sed -e 's/#.*$//' -e 's/[[:space:]]*|[[:space:]]*/|/g' \
+                -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' \
+          | grep -v '^$' \
+          | while IFS='|' read -r repo svc win port runtask; do
+              rc=0
+              curl -s -o /dev/null --max-time 3 "http://127.0.0.1:$port/" 2>/dev/null || rc=$?
+              # 7 = connection refused, 28 = timed out. Anything else means
+              # something answered, including a 404 or a 401.
+              case $rc in 7|28) up="no" ;; *) up="yes" ;; esac
+
+              where="-"
+              if printf '%s\n' "$windows" | grep -qx "$win"; then
+                dead=$(tmux list-panes -t "$sess:$win" -F '#{pane_dead}' 2>/dev/null | head -1)
+                [ "$dead" = "1" ] && where="tmux (EXITED)" || where="tmux"
+              elif [ "$up" = "yes" ]; then
+                where="container"
+              fi
+              printf '%-16s %-6s %-10s %s\n' "$win" "$port" "$up" "$where"
+            done
+        exit 0
+
+  dev:wait:
+    desc: "Dev: block until every service answers, or fail (TIMEOUT=180). For e2e runners."
+    cmds:
+      - |
+        set -eu
+        deadline=$(( $(date +%s) + {{.TIMEOUT | default 180}} ))
+        pending=$(printf '%s\n' '{{.DEV_SERVICES}}' \
+          | sed -e 's/#.*$//' -e 's/[[:space:]]*|[[:space:]]*/|/g' \
+                -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' \
+          | grep -v '^$' | cut -d'|' -f3,4)
+
+        while [ -n "$pending" ]; do
+          still=""
+          for entry in $pending; do
+            win=${entry%|*}; port=${entry#*|}
+            rc=0
+            curl -s -o /dev/null --max-time 2 "http://127.0.0.1:$port/" 2>/dev/null || rc=$?
+            case $rc in
+              7|28) still="$still $entry" ;;
+              *)    echo "  ok  $win (:$port)" ;;
+            esac
+          done
+          pending=$(echo $still)
+          [ -z "$pending" ] && break
+          if [ "$(date +%s)" -ge "$deadline" ]; then
+            echo "TIMED OUT waiting for:" >&2
+            for entry in $pending; do echo "  - ${entry%|*} (:${entry#*|})" >&2; done
+            exit 1
+          fi
+          sleep 3
+        done
+        echo "Every service is answering."
+
+  dev:setup:
+    desc: "Dev: install dependencies in every repository the dev mode runs from source"
+    cmds:
+      - |
+        printf '%s\n' '{{.DEV_SERVICES}}' \
+          | sed -e 's/#.*$//' -e 's/[[:space:]]*|[[:space:]]*/|/g' \
+                -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' \
+          | grep -v '^$' | cut -d'|' -f1 | sort -u \
+          | while read -r repo; do
+              dir="repositories/$repo"
+              [ -d "$dir" ] || { echo "  ! $repo — not checked out"; continue; }
+              if ! (cd "$dir" && task --list-all 2>/dev/null | grep -q '^\* setup:'); then
+                echo "  - $repo — no 'setup' task, skipped"
+                continue
+              fi
+              echo "==> setup  $repo"
+              (cd "$dir" && task setup) || echo "  ! $repo — setup failed" >&2
+            done
+        exit 0
+      # Must come after the syncs above, never before: `uv sync` reconciles the
+      # environment against the lockfile and replaces the editable installs with
+      # the published wheels.
+      - task: dev:link
+
+  dev:link:
+    desc: "Dev: install celine-sdk and celine-utils from the local checkouts, editable"
+    cmds:
+      - |
+        set +e
+        # Without this, a service runs against the celine-sdk version pinned in
+        # its lockfile, so a change made in repositories/celine-sdk is invisible
+        # to every service that consumes it — which is most of them. The point of
+        # this workspace is that a cross-repository change can be seen working.
+        #
+        # `uv sync` undoes this. Re-run `task dev:link` after one, or after any
+        # `task setup` in a component.
+        printf '%s\n' '{{.DEV_SERVICES}}' \
+          | sed -e 's/#.*$//' -e 's/[[:space:]]*|[[:space:]]*/|/g' \
+                -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' \
+          | grep -v '^$' | cut -d'|' -f1 | sort -u \
+          | while read -r repo; do
+              dir="repositories/$repo"
+              [ -f "$dir/pyproject.toml" ] || continue
+              # `--python .venv/bin/python`, explicitly. `uv pip install` honours
+              # an ambient VIRTUAL_ENV over the project's own .venv, so with a
+              # venv active from some other component — which is easy to do in a
+              # workspace of twenty — the editable install silently lands in that
+              # one instead. `uv sync` does not have this problem; only pip does.
+              [ -x "$dir/.venv/bin/python" ] || { echo "  -       $repo has no .venv — run: task dev:setup"; continue; }
+              for lib in celine-sdk celine-utils; do
+                grep -q "$lib" "$dir/pyproject.toml" || continue
+                [ -d "repositories/$lib" ] || { echo "  !       $lib is not checked out"; continue; }
+                if (cd "$dir" && uv pip install -q --python .venv/bin/python -e "../$lib") 2>/dev/null; then
+                  echo "  linked  $repo → $lib"
+                else
+                  echo "  !       $repo → $lib failed" >&2
+                fi
+              done
+            done
+        exit 0
+
+  dev:doctor:
+    desc: "Dev: check the machine and the checkouts before anything is started"
+    cmds:
+      - |
+        fatal=0; warn=0
+        say_fatal() { echo "  FATAL  $*" >&2; fatal=$((fatal+1)); }
+        say_warn()  { echo "  warn   $*" >&2; warn=$((warn+1)); }
+
+        echo "── tools"
+        for t in docker tmux task curl; do
+          command -v "$t" >/dev/null 2>&1 && echo "  ok     $t" || say_fatal "$t is not installed"
+        done
+        for t in uv pnpm lsof; do
+          command -v "$t" >/dev/null 2>&1 && echo "  ok     $t" \
+            || say_warn "$t is not on PATH (uv/pnpm run the services; lsof frees stuck ports on stop)"
+        done
+        docker info >/dev/null 2>&1 || say_fatal "the docker daemon is not reachable"
+
+        echo "── checkouts"
+        printf '%s\n' '{{.DEV_SERVICES}}' \
+          | sed -e 's/#.*$//' -e 's/[[:space:]]*|[[:space:]]*/|/g' \
+                -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' \
+          | grep -v '^$' | cut -d'|' -f1 | sort -u \
+          | while read -r repo; do
+              dir="repositories/$repo"
+              [ -d "$dir" ] || { echo "  FATAL  $repo is not checked out — run: git submodule update --init"; continue; }
+              # A missing .env is NOT reported here. Most components carry their
+              # dev defaults in config and run without one, and the compose files
+              # that do read it mostly declare it `required: false`. Asking
+              # compose to validate the file is the authoritative check: it fails
+              # exactly when something genuinely required is absent, and it
+              # catches the rest of the compose errors too.
+              err=$( (cd "$dir" && docker compose config -q) 2>&1 )
+              [ -n "$err" ] && echo "  warn   $repo compose is not valid: $(printf '%s' "$err" | head -1)"
+              if [ -f "$dir/pyproject.toml" ] && [ ! -d "$dir/.venv" ]; then
+                echo "  warn   $repo has no .venv — run: task dev:setup"
+              fi
+              # onboarding keeps its frontend in ui/, not at the repository root.
+              for js in "$dir" "$dir/ui"; do
+                if [ -f "$js/package.json" ] && [ ! -d "$js/node_modules" ]; then
+                  echo "  warn   ${js#repositories/} has no node_modules — run: task dev:setup"
+                fi
+              done
+            done
+
+        echo "── ports"
+        printf '%s\n' '{{.DEV_SERVICES}}' \
+          | sed -e 's/#.*$//' -e 's/[[:space:]]*|[[:space:]]*/|/g' \
+                -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' \
+          | grep -v '^$' \
+          | while IFS='|' read -r repo svc win port runtask; do
+              holder=$(lsof -ti tcp:"$port" -sTCP:LISTEN 2>/dev/null | head -1)
+              [ -z "$holder" ] && continue
+              comm=$(ps -o comm= -p "$holder" 2>/dev/null)
+              echo "  note   :$port ($win) is already held by $comm — it will be replaced"
+            done
+        # :80 is Caddy's, and the one port another stack on this machine is most
+        # likely to have taken. Probed rather than looked up: whatever holds :80
+        # is usually a root-owned docker-proxy, which lsof will not show us.
+        rc=0
+        curl -s -o /dev/null --max-time 2 http://127.0.0.1:80/ 2>/dev/null || rc=$?
+        case $rc in
+          7|28) ;;
+          *) echo "  note   something already answers on :80 — if it is not this repo's Caddy, read docker-compose.override.yaml" ;;
+        esac
+
+        echo
+        if [ "$fatal" -gt 0 ]; then
+          echo "$fatal blocking problem(s)." >&2
+          [ "{{.STRICT | default "false"}}" = "true" ] && exit 1
+        fi
+        exit 0
+
+  # ── Per-service control ──────────────────────────────────────────────────
+
+  dev:logs:
+    desc: "Dev: print a service's recent output (task dev:logs -- grid-api)"
+    cmds:
+      - |
+        win='{{.CLI_ARGS}}'
+        [ -n "$win" ] || { echo "Usage: task dev:logs -- <window>   (names: task dev:status)" >&2; exit 1; }
+        tmux capture-pane -p -S -{{.LINES | default 200}} -t '{{.TMUX_SESSION}}:'"$win"
+
+  dev:svc:restart:
+    desc: "Dev: restart one service in place (task dev:svc:restart -- grid-api)"
+    cmds:
+      - |
+        set -eu
+        sess='{{.TMUX_SESSION}}'
+        win='{{.CLI_ARGS}}'
+        [ -n "$win" ] || { echo "Usage: task dev:svc:restart -- <window>   (names: task dev:status)" >&2; exit 1; }
+        tmux has-session -t "$sess" 2>/dev/null || { echo "No '$sess' session — run: task dev:start" >&2; exit 1; }
+        tmux kill-window -t "$sess:$win" 2>/dev/null || true
+      - task: dev:tmux:ensure
+
+  # ── Internals ────────────────────────────────────────────────────────────
+
+  dev:containers:stop:
+    internal: true
+    cmds:
+      - |
+        set +e
+        printf '%s\n' '{{.DEV_SERVICES}}' \
+          | sed -e 's/#.*$//' -e 's/[[:space:]]*|[[:space:]]*/|/g' \
+                -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' \
+          | grep -v '^$' \
+          | while IFS='|' read -r repo svc win port runtask; do
+              dir="repositories/$repo"
+              [ -d "$dir" ] || continue
+              (cd "$dir" && docker compose stop "$svc") >/dev/null 2>&1 \
+                && echo "  stopped container  $repo/$svc  (:$port is now free for the host process)"
+            done
+        exit 0
+
+  dev:tmux:ensure:
+    internal: true
+    cmds:
+      - |
+        set -eu
+        sess='{{.TMUX_SESSION}}'
+        root=$(pwd)
+
+        if ! tmux has-session -t "$sess" 2>/dev/null; then
+          # A placeholder window, so the session exists before the first real
+          # one is added and every service is created the same way.
+          tmux new-session -d -s "$sess" -n __placeholder -c "$root"
+          tmux source-file "$root/{{.TMUX_CONF}}"
+        fi
+
+        printf '%s\n' '{{.DEV_SERVICES}}' \
+          | sed -e 's/#.*$//' -e 's/[[:space:]]*|[[:space:]]*/|/g' \
+                -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' \
+          | grep -v '^$' \
+          | while IFS='|' read -r repo svc win port runtask; do
+              dir="$root/repositories/$repo"
+
+              # Decide first, act second. `continue` from inside an `if` nested
+              # in another `if` does NOT continue the loop in the shell Task
+              # embeds — it resumes after the inner block instead. See
+              # .agents/knowledge/task-shell-continue-bug.md. This chain, and
+              # the `case` below, are the shapes that do behave.
+              #
+              # `remain-on-exit on` keeps a crashed service's window and its
+              # traceback on screen, so an existing window is not proof the
+              # service is running — a dead pane is what `restart` catches.
+              dead=$(tmux list-panes -t "$sess:$win" -F '#{pane_dead}' 2>/dev/null | head -1)
+              # `|| true` because grep -c exits 1 on a count of zero, and Task
+              # runs its commands under errexit.
+              known=$(tmux list-windows -t "$sess" -F '#W' 2>/dev/null | grep -cx "$win" || true)
+
+              if [ ! -d "$dir" ]; then act=missing
+              elif [ "$known" = "0" ]; then act=create
+              elif [ "$dead" = "1" ]; then act=restart
+              else act=keep; fi
+
+              case "$act" in
+                missing) echo "  !  $win — repositories/$repo is not checked out, skipped" >&2 ;;
+                keep)    echo "  =  $win  already running" ;;
+                restart) tmux kill-window -t "$sess:$win" 2>/dev/null || true
+                         echo "  ↻  $win  had exited — restarting" ;;
+              esac
+
+              case "$act" in
+                create|restart)
+                  tmux new-window -d -t "$sess" -n "$win" -c "$dir"
+                  tmux send-keys -t "$sess:$win" "task $runtask" Enter
+                  echo "  +  $win  → repositories/$repo: task $runtask  (:$port)"
+                  ;;
+              esac
+            done
+
+        tmux kill-window -t "$sess:__placeholder" 2>/dev/null || true
+        exit 0
+
+  dev:procs:stop:
+    internal: true
+    cmds:
+      - |
+        set +e
+        sess='{{.TMUX_SESSION}}'
+
+        # C-c first, so each service shuts down the way it would by hand.
+        # Killing the session outright leaves uvicorn's and vite's reload
+        # children re-parented and still holding their ports.
+        if tmux has-session -t "$sess" 2>/dev/null; then
+          for win in $(tmux list-windows -t "$sess" -F '#W' 2>/dev/null); do
+            tmux send-keys -t "$sess:$win" C-c 2>/dev/null
+          done
+          sleep 3
+          tmux kill-session -t "$sess" 2>/dev/null
+          echo "tmux session '$sess' stopped"
+        fi
+
+        ports=$(printf '%s\n' '{{.DEV_SERVICES}}' \
+          | sed -e 's/#.*$//' -e 's/[[:space:]]*|[[:space:]]*/|/g' \
+                -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' \
+          | grep -v '^$' | cut -d'|' -f4)
+
+        self_pgid=$(ps -o pgid= -p $$ 2>/dev/null | tr -d ' ')
+
+        sweep() {
+          for port in $ports; do
+            for pid in $(lsof -ti tcp:"$port" 2>/dev/null); do
+              comm=$(ps -o comm= -p "$pid" 2>/dev/null)
+              # Never touch Docker's own plumbing: in docker mode the port is
+              # held by docker-proxy, and killing that corrupts the daemon's
+              # view of the container. `docker compose down` is what stops those.
+              case "$comm" in
+                docker-proxy|dockerd|containerd*|rootlesskit*|"") continue ;;
+              esac
+              pgid=$(ps -o pgid= -p "$pid" 2>/dev/null | tr -d ' ')
+              [ -z "$pgid" ] && continue
+              [ "$pgid" = "$self_pgid" ] && continue
+              kill "-$1" "-$pgid" 2>/dev/null
+              kill "-$1" "$pid" 2>/dev/null
+            done
+          done
+        }
+
+        # TERM, then KILL for whatever ignored it.
+        sweep TERM
+        sleep 2
+        sweep KILL
+
+        for port in $ports; do
+          timeout 5 sh -c "while lsof -ti tcp:$port >/dev/null 2>&1; do sleep 0.3; done" 2>/dev/null
+        done
+        exit 0
