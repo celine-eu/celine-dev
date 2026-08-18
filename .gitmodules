@@ -58,3 +58,6 @@
 [submodule "repositories/onboarding"]
 	path = repositories/onboarding
 	url = https://github.com/celine-eu/onboarding.git
+[submodule "repositories/infra"]
+	path = repositories/infra
+	url = git@github.com:celine-eu/infra.git
