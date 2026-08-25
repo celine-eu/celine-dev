@@ -17,6 +17,7 @@
     { "path": "repositories/dataset-api" },
     { "path": "repositories/digital-twin" },
     { "path": "repositories/flexibility-api" },
+    { "path": "repositories/infra" },
     { "path": "repositories/nudging-tool" },
     { "path": "repositories/onboarding" },
     { "path": "repositories/ontologies" },
