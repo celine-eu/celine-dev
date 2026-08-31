@@ -24,7 +24,11 @@ checkouts, so a change in either is visible to the services that consume it. **`
 undoes that linking** — re-run `task dev:link` after any `task setup` in a component.
 
 Most components carry their dev defaults in config and need no `.env`. Where one is wanted,
-copy the component's `.env.example`, or restore a packed set with `task repo:env:extract`.
+copy the component's `.env.example` — or run **`task local:pull`**, which fetches every
+`.env`, `taskfile.local.*` and other uncommittable file this workspace needs from
+`labs/celine-dev`. It never overwrites a file you have changed; `task local:status` says
+what differs and `task local:push` publishes yours. The set it carries is the local-file
+table in `taskfile.yaml`.
 
 **3. Check it.** `task dev:doctor` reports missing tools, invalid compose files, missing
 virtualenvs and already-taken ports before anything is started. It is also the first step

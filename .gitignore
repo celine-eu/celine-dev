@@ -3,3 +3,7 @@
 .claude
 
 .agents/
+
+# The inventory of files carried by `task local:pull` / `local:push`.
+# Its contents name private repositories and deployments; this one is public.
+/localfiles.txt*

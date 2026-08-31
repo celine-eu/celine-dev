@@ -95,6 +95,46 @@ vars:
     celine-frontend     | webapp      | webapp-ui      | 3005 | dev:webapp
     celine-frontend     | grid        | grid-ui        | 3006 | dev:grid
 
+  # ═════════════════════════════════════════════════════════════════════════
+  #  LOCAL FILES
+  #
+  #  This workspace needs files that cannot be committed: a path into a
+  #  repository that is not public, a credential, an asset specific to one
+  #  deployment. `task local:pull` fetches them from object storage and
+  #  `task local:push` publishes them. `task local:doctor` checks the transport.
+  #
+  #  WHAT travels is deliberately not listed here. The list is `localfiles.txt`,
+  #  which is gitignored and is itself one of the synced files, because the
+  #  names of those files are the private part — a path names the repository it
+  #  reaches, an asset names the deployment it belongs to, and an inventory of
+  #  credential-bearing files is a map. This repository is public. It may say
+  #  that the mechanism exists; publishing the inventory would re-create in one
+  #  file exactly the disclosure the arrangement removes from many.
+  #
+  #  `local:pull` fetches the list before it fetches anything else, so a fresh
+  #  clone needs only the `mc` alias — `task local:doctor` says how to get it.
+  #
+  #  The list is an ALLOWLIST, never a glob over everything untracked. That
+  #  sweep carries downloaded binaries, build output and stale nested checkouts,
+  #  and it carries a machine-local file the day someone generates one. Only
+  #  files that are the SAME for every developer belong in it; anything
+  #  generated on the machine that needs it is regenerated, not distributed.
+  #
+  #  Format, one row per line, `#` comments and blank lines ignored:
+  #
+  #      <path relative to this directory> | `!` if it carries credentials
+  #
+  #  A row ending in `/` is a directory: every file under it travels.
+  #
+  #  The full procedure, the traps, and what is in the list and why, are in
+  #  `playbooks/sharing-local-only-files.md` in the agent store — which is
+  #  private, and is where anything that names a deployment belongs.
+  # ═════════════════════════════════════════════════════════════════════════
+  LOCAL_LIST: localfiles.txt
+  LOCAL_REMOTE: labs/celine-dev
+  LOCAL_STAGE: tmp/local-sync
+  LOCAL_INCOMING: tmp/local-incoming
+
 tasks:
   repo:pull:
     desc: "Git pull in every repositories/* directory"
@@ -118,55 +158,207 @@ tasks:
             (cd "$d" && task release || true)
         done
 
-  repo:env:pack:
-    desc: "Scan repositories/**/.env and pack them into a zip preserving structure"
-    cmds:
-      - |
-        set -e
-        rm -f tmp/env-pack.zip
-        mkdir -p tmp
-        cd repositories
-        files=$(find . -type f -name ".env")
-        if [ -z "$files" ]; then
-          echo "No .env files found"
-          exit 0
-        fi
-        zip -q ../tmp/env-pack.zip $files
-        echo "Created tmp/env-pack.zip"
+  # ─────────────────────────────────────────────────────────────────────────
+  #  local:*  — the local-file table, to and from labs/celine-dev
+  #
+  #  Every one of these stages the table into {{.LOCAL_STAGE}} first, so the
+  #  thing compared, pushed and diffed is always one tree that mirrors this
+  #  workspace. `mc` then does the transfer and nothing hand-rolls a protocol.
+  #
+  #  Loops here are `for` loops over word lists, and the one nested decision is
+  #  a `case` inside a `case`. That is not style: see the store's
+  #  `knowledge/task-shell-continue-bug.md` — `continue` inside an `if` inside
+  #  an `if` inside a piped `while` does not continue the loop in the shell
+  #  Task embeds, and it cost this file a day once already.
+  # ─────────────────────────────────────────────────────────────────────────
 
-  repo:env:extract:
-    desc: "Extract env-pack.zip and restore .env files safely"
+  local:doctor:
+    desc: "Check that the mc alias and bucket behind local:push/pull are reachable"
     cmds:
       - |
-        set -e
-        if [ ! -f tmp/env-pack.zip ]; then
-          echo "Archive tmp/env-pack.zip not found"
+        set -eu
+        command -v mc >/dev/null || { echo "mc not installed — https://min.io/docs/minio/linux/reference/minio-mc.html"; exit 1; }
+        alias_name="$(echo '{{.LOCAL_REMOTE}}' | cut -d/ -f1)"
+        mc alias list "$alias_name" >/dev/null 2>&1 || {
+          echo "mc alias '$alias_name' is not configured on this machine."
+          echo "Ask for the endpoint and key, then:"
+          echo "  mc alias set $alias_name <endpoint> <access-key> <secret-key>"
+          exit 1
+        }
+        mc ls '{{.LOCAL_REMOTE}}' >/dev/null 2>&1 || { echo "cannot reach {{.LOCAL_REMOTE}} — no access, or the bucket is gone"; exit 1; }
+        echo "mc alias '$alias_name' resolves and {{.LOCAL_REMOTE}} is reachable"
+        access="$(mc anonymous get '{{.LOCAL_REMOTE}}' 2>/dev/null || true)"
+        echo "$access"
+        case "$access" in
+          *private*) ;;
+          *) echo "WARNING: {{.LOCAL_REMOTE}} is not private. Stop and fix that before pushing." ;;
+        esac
+
+  local:stage:
+    desc: "Copy every row of {{.LOCAL_LIST}} into {{.LOCAL_STAGE}} (used by status/push)"
+    cmds:
+      - |
+        set -eu
+        if [ ! -f '{{.LOCAL_LIST}}' ]; then
+          echo "{{.LOCAL_LIST}} is not on this machine, so nothing knows what to carry."
+          echo "Run 'task local:pull' — it fetches the list before anything else."
           exit 1
         fi
-
-        rm -rf tmp/env-pack
-        mkdir -p tmp/env-pack
-        unzip -q tmp/env-pack.zip -d tmp/env-pack
-
-        cd tmp/env-pack
-        find . -type f -name ".env" | while read src; do
-          dst="../../repositories/${src#./}"
-          dst_dir=$(dirname "$dst")
-
-          mkdir -p "$dst_dir"
-
-          if [ -f "$dst" ]; then
-            if cmp -s "$src" "$dst"; then
-              continue
-            else
-              echo "WARN: existing .env differs, skipping: $dst"
-              continue
-            fi
-          fi
-
-          cp "$src" "$dst"
-          echo "Restored $dst"
+        rm -rf '{{.LOCAL_STAGE}}'
+        mkdir -p '{{.LOCAL_STAGE}}'
+        missing=''
+        n=0
+        for row in $(sed 's/#.*//' '{{.LOCAL_LIST}}' | awk -F'|' 'NF{gsub(/[ \t]/,"",$1); if ($1!="") print $1}'); do
+          src="${row%/}"
+          if [ ! -e "$src" ]; then missing="$missing $row"; continue; fi
+          dst='{{.LOCAL_STAGE}}'/"$src"
+          case "$row" in
+            */) mkdir -p "$dst"; cp -a "$src"/. "$dst"/ ;;
+            *)  mkdir -p "$(dirname "$dst")"; cp -a "$src" "$dst" ;;
+          esac
+          n=$((n + 1))
         done
+        # A push mirrors with --remove, so a short tree would delete the missing
+        # rows from the bucket for everybody. Refuse rather than stage a partial one.
+        if [ -n "$missing" ]; then
+          echo "These rows of {{.LOCAL_LIST}} do not exist on this machine:"
+          for m in $missing; do echo "  $m"; done
+          echo
+          echo "Run 'task local:pull' to fetch them, or delete the row if the file is"
+          echo "gone for good — a row that outlives its file is how a stale copy comes back."
+          exit 1
+        fi
+        echo "staged $n of {{.LOCAL_LIST}}'s rows into {{.LOCAL_STAGE}}"
+
+  local:status:
+    desc: "What differs between this machine's local files and {{.LOCAL_REMOTE}}"
+    deps: [local:doctor]
+    cmds:
+      - task: local:stage
+      - |
+        set -eu
+        rm -rf '{{.LOCAL_INCOMING}}'
+        mkdir -p '{{.LOCAL_INCOMING}}'
+        mc mirror --quiet '{{.LOCAL_REMOTE}}/workspace' '{{.LOCAL_INCOMING}}' >/dev/null 2>&1 || true
+        mc cp --quiet '{{.LOCAL_REMOTE}}/{{.LOCAL_LIST}}' '{{.LOCAL_INCOMING}}/{{.LOCAL_LIST}}' >/dev/null 2>&1 || true
+        cp -a '{{.LOCAL_LIST}}' '{{.LOCAL_STAGE}}/{{.LOCAL_LIST}}'
+        echo
+        echo "  <  only here      >  only in the bucket      !  differs"
+        echo
+        # Compared by CONTENT, not by `mc diff`. mc keys on size and modification
+        # time, and `mc mirror` down stamps a pulled file with the time it landed
+        # rather than the object's — so every file a pull brought in reads as
+        # changed from then on, and status and pull disagree about the same tree.
+        n=0
+        for rel in $( { (cd '{{.LOCAL_STAGE}}' && find . -type f); (cd '{{.LOCAL_INCOMING}}' && find . -type f); } | sed 's|^\./||' | sort -u); do
+          here='{{.LOCAL_STAGE}}'/"$rel"
+          there='{{.LOCAL_INCOMING}}'/"$rel"
+          if [ ! -e "$there" ]; then state=local
+          elif [ ! -e "$here" ]; then state=remote
+          elif cmp -s "$here" "$there"; then state=same
+          else state=differs
+          fi
+          case "$state" in
+            local)   n=$((n + 1)); echo "  <  $rel" ;;
+            remote)  n=$((n + 1)); echo "  >  $rel" ;;
+            differs) n=$((n + 1)); echo "  !  $rel" ;;
+            same) ;;
+          esac
+        done
+        if [ "$n" -eq 0 ]; then echo "  in sync"; fi
+        echo
+        mc cat '{{.LOCAL_REMOTE}}/MANIFEST.txt' 2>/dev/null | grep -E '^pushed_(at|by):' || true
+
+  local:push:
+    desc: "Send this machine's local files to {{.LOCAL_REMOTE}} — overwrites what is there"
+    deps: [local:doctor]
+    cmds:
+      - task: local:stage
+      - |
+        set -eu
+        creds="$(sed 's/#.*//' '{{.LOCAL_LIST}}' | awk -F'|' 'NF && $2 ~ /!/ {print}' | grep -c . || true)"
+        echo
+        echo "pushing to {{.LOCAL_REMOTE}}/workspace"
+        echo "  $creds of these files carry credentials, and the 'labs' alias is lab-wide."
+        echo
+        mc mirror --overwrite --remove '{{.LOCAL_STAGE}}' '{{.LOCAL_REMOTE}}/workspace'
+        {
+          echo "# labs/celine-dev — the local-only files of the celine-dev workspace."
+          echo "# Written by 'task local:push'. Do not edit by hand; localfiles.txt"
+          echo "# beside it is the source of truth for what belongs here."
+          echo "#"
+          echo "pushed_at: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "pushed_by: $(git config user.name 2>/dev/null || id -un)@$(hostname)"
+          echo "files:"
+          (cd '{{.LOCAL_STAGE}}' && find . -type f | sed 's|^\./|  - |' | sort)
+        } > '{{.LOCAL_STAGE}}'.manifest
+        mc cp --quiet '{{.LOCAL_STAGE}}'.manifest '{{.LOCAL_REMOTE}}/MANIFEST.txt'
+        # The list travels with the files it describes. It is the one thing a
+        # fresh clone cannot get from the public repository, so the bucket is
+        # where it has to be.
+        mc cp --quiet '{{.LOCAL_LIST}}' '{{.LOCAL_REMOTE}}/{{.LOCAL_LIST}}'
+        echo
+        echo "done — {{.LOCAL_LIST}} and MANIFEST.txt updated"
+
+  local:pull:
+    desc: "Fetch the local files from {{.LOCAL_REMOTE}}. Never overwrites silently; -- --force does"
+    deps: [local:doctor]
+    cmds:
+      - |
+        set -eu
+        force=0
+        case '{{.CLI_ARGS}}' in *--force*) force=1 ;; esac
+        # The list before the files: on a fresh clone it is the only thing that
+        # says what the rest of this task should expect to find.
+        mc cp --quiet '{{.LOCAL_REMOTE}}/{{.LOCAL_LIST}}' '{{.LOCAL_LIST}}.remote' >/dev/null
+        if [ ! -f '{{.LOCAL_LIST}}' ]; then
+          mv '{{.LOCAL_LIST}}.remote' '{{.LOCAL_LIST}}'
+          echo "  new       {{.LOCAL_LIST}}"
+        elif cmp -s '{{.LOCAL_LIST}}.remote' '{{.LOCAL_LIST}}'; then
+          rm -f '{{.LOCAL_LIST}}.remote'
+        elif [ "$force" = "1" ]; then
+          mv '{{.LOCAL_LIST}}.remote' '{{.LOCAL_LIST}}'
+          echo "  updated   {{.LOCAL_LIST}}"
+        else
+          echo "  DIFFERS   {{.LOCAL_LIST}}  (bucket's copy left at {{.LOCAL_LIST}}.remote)"
+        fi
+        rm -rf '{{.LOCAL_INCOMING}}'
+        mkdir -p '{{.LOCAL_INCOMING}}'
+        mc mirror --quiet '{{.LOCAL_REMOTE}}/workspace' '{{.LOCAL_INCOMING}}' >/dev/null
+        echo
+        differs=0
+        for rel in $(cd '{{.LOCAL_INCOMING}}' && find . -type f | sed 's|^\./||' | sort); do
+          src='{{.LOCAL_INCOMING}}'/"$rel"
+          if [ ! -e "$rel" ]; then state=new
+          elif cmp -s "$src" "$rel"; then state=same
+          else state=differs
+          fi
+          case "$state" in
+            new)
+              mkdir -p "$(dirname "$rel")"
+              cp -a "$src" "$rel"
+              echo "  new       $rel"
+              ;;
+            same) ;;
+            differs)
+              case "$force" in
+                1) cp -a "$src" "$rel"; echo "  updated   $rel" ;;
+                *) differs=$((differs + 1)); echo "  DIFFERS   $rel" ;;
+              esac
+              ;;
+          esac
+        done
+        echo
+        # Not an error: a file you edited and have not pushed lands here too.
+        # Which it is, is a judgement, so this reports and stops rather than choosing.
+        if [ "$differs" -gt 0 ]; then
+          echo "$differs file(s) differ and were left alone. The bucket's copies are under"
+          echo "{{.LOCAL_INCOMING}}/ — diff them, then either 'task local:push' to publish"
+          echo "yours or 'task local:pull -- --force' to take the bucket's."
+        else
+          echo "up to date"
+        fi
+        mc cat '{{.LOCAL_REMOTE}}/MANIFEST.txt' 2>/dev/null | grep -E '^pushed_(at|by):' || true
 
   repo:push:
     desc: "Commit and push all repositories with a given message"
