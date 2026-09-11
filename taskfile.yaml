@@ -50,6 +50,7 @@ vars:
     flexibility-api     |
     nudging-tool        |
     celine-ai-assistant |
+    celine-community    |
     celine-grid         |
     celine-roi          |
     celine-webapp       |
@@ -88,12 +89,14 @@ vars:
     nudging-tool        | api         | nudging-api    | 8016 | run
     flexibility-api     | api         | flexibility    | 8017 | run
     celine-roi          | api         | roi-api        | 8018 | run
+    celine-community    | api         | community-api  | 8019 | run
     onboarding          | backend     | onboarding-api | 8040 | run:api
     onboarding          | frontend    | onboarding-ui  | 3000 | run:ui
     celine-frontend     | assistant   | assistant-ui   | 3003 | dev:assistant
     celine-frontend     | roi         | roi-ui         | 3004 | dev:roi
     celine-frontend     | webapp      | webapp-ui      | 3005 | dev:webapp
     celine-frontend     | grid        | grid-ui        | 3006 | dev:grid
+    celine-frontend     | community   | community-ui   | 3007 | dev:community
 
   # ═════════════════════════════════════════════════════════════════════════
   #  LOCAL FILES

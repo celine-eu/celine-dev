@@ -223,6 +223,37 @@ http://grid.celine.localhost {
   reverse_proxy host-gw:3006
 }
 
+# REC Manager Dashboard. Auth is split by path rather than imported at host
+# level, unlike the grid block above that this app otherwise copies:
+# `apps/community/src/routes/+layout.ts` redirects itself on 401 and routes to
+# /denied on 403, and a 302 to an HTML login page reaches an XHR as an opaque
+# CORS failure — so those two branches would never run. Pages keep (auth), so
+# browser navigation still gets the sign-in redirect.
+http://community.celine.localhost {
+  route {
+    # Clear the Keycloak SSO session, not just the proxy cookie — otherwise the
+    # next visit silently re-authenticates. Same trap the webapp block documents.
+    handle /oauth2/sign_out {
+      redir * http://keycloak.celine.localhost/realms/celine/protocol/openid-connect/logout?client_id=oauth2_proxy&post_logout_redirect_uri=http%3A%2F%2Fsso.celine.localhost%2Foauth2%2Fsign_out 302
+    }
+
+    handle /oauth2/* {
+      reverse_proxy host-gw:4180
+    }
+
+    # The BFF serves its routes under /api, so the prefix is preserved.
+    handle /api/* {
+      import auth_api
+      reverse_proxy host-gw:8019
+    }
+
+    handle {
+      import auth
+      reverse_proxy host-gw:3007
+    }
+  }
+}
+
 http://webapp.celine.localhost {
   route {
     # Intercept sign_out before the catch-all /oauth2/* below: send the browser

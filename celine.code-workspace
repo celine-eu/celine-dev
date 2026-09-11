@@ -2,6 +2,7 @@
   "folders": [
     { "path": ".", "name": "celine-dev" },
     { "path": "repositories/celine-ai-assistant" },
+    { "path": "repositories/celine-community" },
     { "path": "repositories/celine-dashboards" },
     { "path": "repositories/celine-eu.github.io" },
     { "path": "repositories/celine-forecasting" },
