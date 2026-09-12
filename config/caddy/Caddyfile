@@ -293,25 +293,46 @@ http://webapp.celine.localhost {
 }
 
 
-# APIs
+# The provisioning service (celine-policies, port 8010).
 #
 # ---------------------------------------------------------------------------
-# DO NOT ADD A ROUTE TO THE PROVISIONING SERVICE (celine-policies, port 8010).
+# THIS IS THE ONLY ROUTE IT GETS, AND IT IS NOT UNDER api.celine.localhost.
 # ---------------------------------------------------------------------------
 # It is the only service holding **realm-wide** Keycloak administration —
 # `manage-users` and `manage-realm` on the celine realm, which is every account
 # in the realm plus the Organizations API. It holds that grant *because* nothing
-# outside the network can reach it, and that is the whole of the security
+# outside the deployment can reach it, and that is the whole of the security
 # argument: see celine-policies `docs/decisions/ADR-0007`.
 #
-# A `handle_path /provisioning*` here converts a realm-wide admin credential
-# into an internet-facing one. It would still check scopes on the token — the
-# service authorises by `provisioning.*` like every other — but that is defence
-# in depth, not the control, and it is not what the grant was justified by.
+# It had no route at all until 2026-09-12, on the reasoning that its callers
+# reach it by container name on `celine_security_net`. **They cannot.** Nothing
+# joins that network from another compose project, so `http://provisioning:8010`
+# resolved from no caller this platform has: `repositories/onboarding` runs in a
+# project and a network of its own, and on a developer's machine it as often
+# runs from source on the host with no Docker network at all. Measured on the
+# demo3 deployment the same day — neither half of onboarding could resolve the
+# name, so the login step could not be exercised anywhere.
 #
-# Its callers are other services on `celine_security_net`, reaching it by
-# container name. Nothing a browser does ever touches it.
+# **A host of its own, deliberately.** `provisioning.internal.celine.localhost`
+# is one name to keep out of a public DNS zone and a public ingress; a
+# `handle_path /provisioning*` under `api.celine.localhost` would put it inside
+# the host every browser and every partner integration already reaches, one
+# line away from an internet-facing realm-admin credential. `internal` is in
+# the name so that whoever carries this block into a real deployment has to
+# decide what to do with it rather than inheriting it.
+#
+# **No forward_auth**, and that is not an omission: its callers are services
+# presenting their own bearer token, which the service verifies against the
+# realm's JWKS and authorises by `provisioning.*` scope. Nothing a browser does
+# touches it. Scope checking is defence in depth rather than the control — the
+# control is that this hostname resolves nowhere outside a dev machine.
 # ---------------------------------------------------------------------------
+http://provisioning.internal.celine.localhost {
+  reverse_proxy host-gw:8010
+}
+
+
+# APIs
 http://api.celine.localhost {
  
   handle_path /datasets* {
