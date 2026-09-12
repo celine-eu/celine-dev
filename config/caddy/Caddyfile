@@ -294,6 +294,24 @@ http://webapp.celine.localhost {
 
 
 # APIs
+#
+# ---------------------------------------------------------------------------
+# DO NOT ADD A ROUTE TO THE PROVISIONING SERVICE (celine-policies, port 8010).
+# ---------------------------------------------------------------------------
+# It is the only service holding **realm-wide** Keycloak administration —
+# `manage-users` and `manage-realm` on the celine realm, which is every account
+# in the realm plus the Organizations API. It holds that grant *because* nothing
+# outside the network can reach it, and that is the whole of the security
+# argument: see celine-policies `docs/decisions/ADR-0007`.
+#
+# A `handle_path /provisioning*` here converts a realm-wide admin credential
+# into an internet-facing one. It would still check scopes on the token — the
+# service authorises by `provisioning.*` like every other — but that is defence
+# in depth, not the control, and it is not what the grant was justified by.
+#
+# Its callers are other services on `celine_security_net`, reaching it by
+# container name. Nothing a browser does ever touches it.
+# ---------------------------------------------------------------------------
 http://api.celine.localhost {
  
   handle_path /datasets* {
