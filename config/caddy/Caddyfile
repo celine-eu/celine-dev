@@ -76,6 +76,15 @@ http://keycloak.celine.localhost {
   reverse_proxy host-gw:8080
 }
 
+# Mailpit, from celine-policies' compose: the dev catch-all for Keycloak's
+# invitation / reset emails and onboarding's notifications. No `import auth` on
+# purpose — the person reading an invitation here usually has no password yet.
+# It holds working password-set links, so it is as open as Keycloak's own admin
+# is on this machine and must never be routed on a real deployment.
+http://mailpit.celine.localhost {
+  reverse_proxy host-gw:8025
+}
+
 http://sso.celine.localhost {
   handle /oauth2/* {
     reverse_proxy host-gw:4180

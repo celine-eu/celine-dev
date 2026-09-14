@@ -10,7 +10,7 @@ routed by hostname, so the names have to resolve. Add to `/etc/hosts`:
 
 ```
 172.17.0.1  host.docker.internal
-172.17.0.1  keycloak.celine.localhost sso.celine.localhost mqtt.celine.localhost
+172.17.0.1  keycloak.celine.localhost sso.celine.localhost mqtt.celine.localhost mailpit.celine.localhost
 172.17.0.1  api.celine.localhost
 172.17.0.1  webapp.celine.localhost assistant.celine.localhost grid.celine.localhost roi.celine.localhost
 172.17.0.1  community.celine.localhost
