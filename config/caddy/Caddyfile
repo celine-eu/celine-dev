@@ -76,6 +76,11 @@ http://keycloak.celine.localhost {
   reverse_proxy host-gw:8080
 }
 
+# Dev mail capture: the Mailpit UI and API from celine-policies' compose (host :8025).
+http://mailpit.celine.localhost {
+  reverse_proxy host-gw:8025
+}
+
 http://sso.celine.localhost {
   handle /oauth2/* {
     reverse_proxy host-gw:4180
@@ -221,6 +226,31 @@ http://grid.celine.localhost {
   }
 
   reverse_proxy host-gw:3006
+}
+
+# REC Manager Dashboard: celine-community (BFF, :8019) and celine-frontend's community app
+# (:3007). Pages get (auth), which redirects to sign-in; /api/* gets (auth_api), a bare 401
+# the app's client turns into its own redirect.
+http://community.celine.localhost {
+  route {
+    handle /oauth2/sign_out {
+      redir * http://keycloak.celine.localhost/realms/celine/protocol/openid-connect/logout?client_id=oauth2_proxy&post_logout_redirect_uri=http%3A%2F%2Fsso.celine.localhost%2Foauth2%2Fsign_out 302
+    }
+
+    handle /oauth2/* {
+      reverse_proxy host-gw:4180
+    }
+
+    handle /api/* {
+      import auth_api
+      reverse_proxy host-gw:8019
+    }
+
+    handle {
+      import auth
+      reverse_proxy host-gw:3007
+    }
+  }
 }
 
 http://webapp.celine.localhost {

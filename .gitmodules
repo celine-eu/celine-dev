@@ -61,3 +61,6 @@
 [submodule "repositories/infra"]
 	path = repositories/infra
 	url = git@github.com:celine-eu/infra.git
+[submodule "repositories/celine-community"]
+	path = repositories/celine-community
+	url = git@github.com:celine-eu/celine-community.git

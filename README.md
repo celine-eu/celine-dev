@@ -12,7 +12,7 @@ routed by hostname, so the names have to resolve. Add to `/etc/hosts`:
 172.17.0.1  host.docker.internal
 172.17.0.1  keycloak.celine.localhost sso.celine.localhost mqtt.celine.localhost
 172.17.0.1  api.celine.localhost
-172.17.0.1  webapp.celine.localhost assistant.celine.localhost grid.celine.localhost roi.celine.localhost
+172.17.0.1  webapp.celine.localhost assistant.celine.localhost grid.celine.localhost roi.celine.localhost community.celine.localhost mailpit.celine.localhost
 172.17.0.1  onboarding.celine.localhost
 172.17.0.1  superset.celine.localhost jupyter.celine.localhost
 172.17.0.1  marquez.celine.localhost prefect.celine.localhost mlflow.celine.localhost
@@ -51,8 +51,8 @@ task docker:ps
 This is the mode that exercises the Dockerfiles and the compose `environment:` blocks, so
 it is the one that validates a change to either.
 
-The core stack is the platform: Caddy, the BFFs (webapp, grid, assistant, roi), the APIs
-(dataset-api, digital-twin, rec-registry, nudging, flexibility), the four frontend apps,
+The core stack is the platform: Caddy, the BFFs (webapp, grid, assistant, roi, community), the APIs
+(dataset-api, digital-twin, rec-registry, nudging, flexibility), the five frontend apps,
 onboarding — plus the two things none of them run without, Postgres (celine-pipelines'
 `datasets-db`) and identity (celine-policies).
 
