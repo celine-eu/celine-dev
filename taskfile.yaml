@@ -52,6 +52,7 @@ vars:
     celine-ai-assistant |
     celine-community    |
     celine-grid         |
+    celine-community    |
     celine-roi          |
     celine-webapp       |
     onboarding          |
@@ -86,6 +87,7 @@ vars:
     celine-ai-assistant | api         | assistant-api  | 8012 | run
     celine-webapp       | api         | webapp-api     | 8014 | run
     celine-grid         | api         | grid-api       | 8015 | run
+    celine-community    | api         | community-api  | 8019 | run
     nudging-tool        | api         | nudging-api    | 8016 | run
     flexibility-api     | api         | flexibility    | 8017 | run
     celine-roi          | api         | roi-api        | 8018 | run
