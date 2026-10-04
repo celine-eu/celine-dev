@@ -66,7 +66,7 @@ PG_ADMIN = os.environ.get(
 PG_SERVICE_HOST = os.environ.get("PRODLIKE_PG_SERVICE_HOST", "172.17.0.1:15432")
 LOCAL_HOSTS = ("localhost", "127.0.0.1", "172.17.0.1", "host.docker.internal")
 
-# repo, uvicorn target (+ --factory), cwd inside the repo, dev port, database,
+# repo (default: the key), uvicorn target (+ --factory), cwd inside the repo, dev port, database,
 # driver, the settings that carry the database URL, the path polled for "up".
 SERVICES: dict[str, dict] = {
     "dataset-api": dict(app="celine.dataset.main:create_app", factory=True, port=8001,
@@ -89,6 +89,8 @@ SERVICES: dict[str, dict] = {
                        db="roi", driver="postgresql", health="/docs"),
     "celine-community": dict(app="celine.community.main:app", factory=False, port=8019,
                              db="community", driver="postgresql+asyncpg"),
+    "mqtt-auth": dict(repo="celine-policies", app="celine.mqtt_auth.main:create_app",
+                      factory=True, port=8009, db=None),
     "onboarding": dict(app="celine.onboarding.main:app", factory=False, port=8040, cwd="src",
                        venv="../.venv", db="rec_onboarding", driver="postgresql+asyncpg",
                        health="/api/health"),
@@ -309,7 +311,7 @@ def up(a) -> None:
     if st.get("pid"):
         die(f"{a.svc} already has an instance (pid {st['pid']}); run `down` first")
     require_local(PG_ADMIN, "Postgres")
-    repo = REPOS / a.svc
+    repo = REPOS / spec.get("repo", a.svc)
     cwd = repo / spec.get("cwd", ".")
     uvicorn = (cwd / spec.get("venv", ".venv") / "bin" / "uvicorn").resolve()
     if not uvicorn.exists():
