@@ -479,6 +479,10 @@ tasks:
     cmds:
       - |
         set -eu
+        # The composes pass `CELINE_ENV: ${CELINE_ENV:-}` and default to
+        # hardened (celine.sdk.posture), so this local stack says `dev` here.
+        # `CELINE_ENV=staging task docker:start` is the prod-like run.
+        export CELINE_ENV="${CELINE_ENV:-dev}"
         # Naming stacks explicitly makes both tables eligible; `core` is the
         # platform only. A repository in both tables (celine-pipelines) is
         # visited twice, which is what starts its core half first.
@@ -592,6 +596,18 @@ tasks:
               [ -n "$out" ] && { echo "── $repo"; printf '%s\n' "$out" | sed 's/^/  /' | column -t -s'|'; }
             done
         exit 0
+
+  # ── Prod-like verification ───────────────────────────────────────────────
+
+  prodlike:
+    desc: "A second, hardened instance of one service beside the dev one: task prodlike -- up|user|token|down|run|status <svc> ..."
+    # Dev is permissive and everything else hardened (celine.sdk.posture), so a
+    # hardened code path is proved by running it: CELINE_ENV=staging, a
+    # temporary least-privilege DB role, explicit OIDC, real tokens for
+    # temporary users, and a teardown of all of it. The dev unit is untouched;
+    # local hosts only. `scripts/prodlike.py --help` has the details.
+    cmds:
+      - python3 scripts/prodlike.py {{.CLI_ARGS}}
 
   # ── Local development ────────────────────────────────────────────────────
 
