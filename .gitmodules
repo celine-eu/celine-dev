@@ -64,3 +64,6 @@
 [submodule "repositories/celine-community"]
 	path = repositories/celine-community
 	url = git@github.com:celine-eu/celine-community.git
+[submodule "repositories/celine-legal"]
+	path = repositories/celine-legal
+	url = git@github.com:celine-eu/celine-legal.git
